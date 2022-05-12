@@ -1,4 +1,4 @@
-- 👋 Hi, I’m h4yır
+- 👋 Hi, I’m Solø
 - 👀 I’m interested in Python
 - 🌱 I’m currently learning Python
-- 📫 If you want you can follow me on Instagram! Instagram= @uwupriww / Discord= hayır#6723
+- 📫 If you want you can follow me on Instagram! Instagram= @uwupriww / Discord= Solø#6723
