@@ -11,6 +11,7 @@ import gtts
 import keep_alive
 from discord.ext import commands, tasks
 import discord
+from discord import app_commands
 import requests
 from discord.utils import get
 import random
@@ -24,14 +25,32 @@ from roblox.thumbnails import AvatarThumbnailType
 import json
 import io
 import contextlib
-
+import typing
 # Intents
 intents = discord.Intents.all()
 intents.members = True
 intents.message_content = True
 intents.presences = True
+class aclient(discord.Client):
+  def __init__(self):
+    super().__init__(intents=discord.Intents.all())
+    self.synced = False
 
-client = commands.Bot(command_prefix='+', intents=intents, help_command=None)
+  async def on_ready(self):
+    await self.wait_until_ready()
+    print('Bota bağlanıldı: {}'.format(client.user.name))
+
+    print('Bot ID: {}'.format(client.user.id))
+
+    activity = discord.Game(name="Bot şuanlık slash commandsa geçiş için kullanıma kapalıdır.", type=3)
+    await client.change_presence(status=discord.Status.idle, activity=activity)
+    print("Durum ayarlandı!")
+    if not self.synced:
+      await tree.sync()
+      self.synced = True
+
+client = aclient()
+tree = app_commands.CommandTree(client)
 
 # Variables
 with open('jsons/song_queue.json') as f:
@@ -59,15 +78,6 @@ robux = Client()
 
 
 # Startup info
-@client.event
-async def on_ready():
-    print('Bota bağlanıldı: {}'.format(client.user.name))
-
-    print('Bot ID: {}'.format(client.user.id))
-
-    activity = discord.Game(name="+yardım", type=3)
-    await client.change_presence(status=discord.Status.idle, activity=activity)
-    print("Durum ayarlandı!")
 
 
 # Events
@@ -95,38 +105,38 @@ async def on_member_remove(member):
 
 
 @client.event
-async def on_command_error(ctx, error):
+async def on_command_error(ctx: discord.Interaction, error):
     if isinstance(error, commands.BotMissingPermissions):
-        a = await ctx.send('Hata: Botun bunu yapmaya yetkisi yok')
+        a = await ctx.response.send_message('Hata: Botun bunu yapmaya yetkisi yok', ephemeral=True)
         sleep(3)
         await a.delete()
     elif isinstance(error, commands.CheckFailure):
-        a = await ctx.send(f'Üzgünüm dostum... Bu komutu kullanamazsın...')
+        a = await ctx.response.send_message(f'Üzgünüm dostum... Bu komutu kullanamazsın...', ephemeral=True)
         sleep(3)
         await a.delete()
       
     elif isinstance(error, commands.MissingPermissions):
-        a = await ctx.send(
-            f'Hata: Üzgünüm <@{ctx.author.id}>, bunu yapmaya yetkin yok')
+        a = await ctx.response.send_message(
+            f'Hata: Üzgünüm <@{ctx.user.id}>, bunu yapmaya yetkin yok', ephemeral=True)
         sleep(3)
         await a.delete()
 
     elif isinstance(error, commands.CommandNotFound):
-        a = await ctx.reply(f'Hata: Böyle bir komut yok!')
+        a = await ctx.response.send_message(f'Hata: Böyle bir komut yok!', ephemeral=True)
         sleep(3)
         await a.delete()
 
     elif isinstance(error, commands.CommandOnCooldown):
-        a = await ctx.send(f'Hata: {error}')
+        a = await ctx.response.send_message(f'Hata: {error}', ephemeral=True)
         sleep(3)
         await a.delete()
     elif isinstance(error, commands.UserNotFound):
-        a = await ctx.send(f'Hata: Kullanıcı bulunamadı!')
+        a = await ctx.response.send_message(f'Hata: Kullanıcı bulunamadı!', ephemeral=True)
         sleep(3)
         await a.delete()
     elif isinstance(error, commands.errors.MissingRequiredArgument):
-        a = await ctx.send(
-            f'Hata: Yanlış kullanım! Gerekli argümanları giriniz!')
+        a = await ctx.response.send_message(
+            f'Hata: Yanlış kullanım! Gerekli argümanları giriniz!', ephemeral=True)
         sleep(3)
         await a.delete()
     
@@ -179,12 +189,17 @@ async def on_message(message):
 
     if message.content.lower() == 'eymen ifşa':
         await message.channel.send(file=random.choice(eymenifsa))
-    await client.process_commands(message)
-
 
 # commands
-@client.command()
-async def yardım(ctx,help = None):
+@tree.command(name='imagine',description='Draw a picture.',guilds=client.guilds)
+async def self(interaction: discord.Interaction, message: str):
+  await interaction.response.send_message("Wait a second...", ephemeral=True)
+  respon = openai.Image.create(prompt=f"{message}", n=1, size="512x512")
+  print(respon["data"][0]["url"])
+  await interaction.channel.send(f'Here is your picture, {interaction.user.mention}!\nPrompt:{message}\n{respon["data"][0]["url"]}')
+      
+@tree.command(name='yardım',description='Help Command.', guilds=client.guilds)
+async def yardım(ctx:discord.Interaction,help: typing.Literal["mod","muzik","eglence"] = None):
   if help == None:
     embed = discord.Embed(
         title=' ',
@@ -193,8 +208,8 @@ async def yardım(ctx,help = None):
         colour=discord.Colour.blue())
     embed.add_field(name='Yardım Komutları', value='**<a:mod:1028649041619320932>     Moderatör Komutları: +yardım mod\n\n<a:music:1028648378638290994>     Müzik Komutları: +yardım muzik\n\n<a:eglence:1028649336873160824>     Eğlence Komutları: +yardım eglence**')
     embed.set_footer(
-        text='Bu komut {} tarafından kullanıldı!'.format(ctx.author.name))
-    await ctx.send(embed=embed)
+        text='Bu komut {} tarafından kullanıldı!'.format(ctx.user.name))
+    await ctx.response.send_message(embed=embed)
   elif help.lower() == "mod":
     embed = discord.Embed(title=' ',
                           description='',
@@ -205,7 +220,7 @@ async def yardım(ctx,help = None):
         value=
         '```+sil: Belirttiğiniz kadar mesaj siler.\n\n+kick: Etiketlenen kişiyi atar.\n\n+ban: Etiketlenen kişiyi banlar.\n\n+unban: İsmi ve etiketi yazılan kişinin banını kaldırır.\n\n+nick: Etiketlediğiniz kişinin nickini değiştirir.```',
         inline=False)
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
   elif help.lower() == "muzik":
     embed = discord.Embed(title=' ',
                           description='',
@@ -216,7 +231,7 @@ async def yardım(ctx,help = None):
         value=
         '```+oynat: Yazdığınız şarkıyı oynatır.\n\n+dur: Şarkıyı duraklatır.\n\n+devam: Şarkıyı devam ettirir.\n\n+kapat: Şarkıyı temelli kapatır.\n\n+s: Çalınan şarkıyı atlar.\n\n+sr: Yazdığınız sırada hangi şarkının olduğunu söyler.\n\n+loop: Çalınan şarkıyı loopa sokar.\n\n+tts: Bot bulunduğunuz ses kanalına gelip yazdığınız şeyi okur.\n\n+yt: Yazdığınız şeyi youtube\'de aratır ve çıkan sonucu size söyler.```',
         inline=False)
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
   elif help.lower() == "eglence":
     embed = discord.Embed(title=' ',
                           description='',
@@ -227,11 +242,11 @@ async def yardım(ctx,help = None):
         value=
         '```+trs: Başka bir dili türkçeye çevirir.\n\n+trsr: Herhangi bir dili seçtiğiniz dile çevirir.\n\n+rfoto: Rastgele bir fotoğraf atar.\n\n+xox: Etiketlediğiniz kişi ile xox oynarsınız.\n\n+instapp: Yazdığınız instagram hesabının profil fotoğrafını atar.\n\n+mcbaşarım: Yazdığınız şeyi minecraft başırımı gibi editler.\n\n+pfp: Etiketlenen kişinin profil fotosunu atar.Kimseyi etiketlemezseniz sizinkini atar.\n\n+mesajyaz: Etiketlediğiniz kişinin yerine mesaj yazarsınız.\n\n+sayıtahmin: Sayı tahmin oyunu oynarsınız.\n\n+tts: Bot bulunduğunuz ses kanalına gelip yazdığınız metni okur```',
         inline=False)
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
 
-@client.command(aliases=["commands"])
-async def help(ctx, yardim = None):
-  if yardim == None:
+@tree.command()
+async def help(ctx:discord.Interaction,help: typing.Literal["mod","music","fun"] = None):
+  if help == None:
     embed = discord.Embed(
         title=' ',
         description=
@@ -239,9 +254,9 @@ async def help(ctx, yardim = None):
         colour=discord.Colour.blue())
     embed.add_field(name='Help Commands', value='**<a:mod:1028649041619320932>     Mod Commands: +help mod\n\n<a:music:1028648378638290994>     Music Commands: +help music\n\n<a:eglence:1028649336873160824>     Fun Commands: +help fun**')
     embed.set_footer(
-        text='This command used by {}!'.format(ctx.author.name))
-    await ctx.send(embed=embed)
-  elif yardim.lower() == "mod":
+        text='This command used by {}!'.format(ctx.user.name))
+    await ctx.response.send_message(embed=embed)
+  elif help.lower() == "mod":
     embed = discord.Embed(title=' ',
                           description='',
                           colour=discord.Colour.blue())
@@ -251,8 +266,8 @@ async def help(ctx, yardim = None):
         value=
         '```+purge: Deletes the messages.\n\n+kick: Kicks a user.\n\n+ban: Bans a member.\n\n+unban: Unbans a user.\n\n+nick: Changes nickname of a member.```',
         inline=False)
-    await ctx.send(embed=embed)
-  elif yardim.lower() == "music":
+    await ctx.response.send_message(embed=embed)
+  elif help.lower() == "music":
     embed = discord.Embed(title=' ',
                           description='',
                           colour=discord.Colour.blue())
@@ -262,8 +277,8 @@ async def help(ctx, yardim = None):
         value=
         '```+play: Plays a song.\n\n+pause: Pauses the song.\n\n+continue: Continues the song.\n\n+stop: Stops the song and disconnects from voice channel.\n\n+skip: Skips the song.\n\n+queue: Shows the queue.\n\n+loop: Loops the song.\n\n+tts: Bot joins the voice channel and tells that what you wrote.\n\n+yt: Searches a song on youtube.```',
         inline=False)
-    await ctx.send(embed=embed)
-  elif yardim.lower() == "fun":
+    await ctx.response.send_message(embed=embed)
+  elif help.lower() == "fun":
     embed = discord.Embed(title=' ',
                           description='',
                           colour=discord.Colour.blue())
@@ -273,33 +288,33 @@ async def help(ctx, yardim = None):
         value=
         '```+rfoto: Sends a random photo.\n\n+xox: Starts a xox game with you and the person who you pinged.\n\n+instapp: Sends the profile picture of a instagram account.\n\n+achievement: M-Minecraft achievements???\n\n+pfp: Sends the profile picture of person who you pinged.\n\n+fakemessage: Writes a fake message.\n\n+guess: Guess the number game.\n\n+botinfo: Info about SoloBot.\n\n+userinfo: Info about a member.```',
         inline=False)
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
 
 
-@client.command()
-async def botinfo(ctx):
+@tree.command(name="botinfo",description="Information about bot.")
+async def botinfo(ctx: discord.Interaction):
   kisiler = 0
   for k in client.guilds:
     kisiler = kisiler + len(k.members)
   solo= ctx.guild.me
 
   embed = discord.Embed(title="SoloBot hakkında bazı bilgiler.", description=f"**Bot: \tSoloBot\n\nKaç adet sunucuya hizmet veriyor:\t{len(client.guilds)}\n\nKaç adet üyeye hizmet veriyor:\t{kisiler}\n\nOluşturulma tarihi:\t{client.user.created_at}\n\nSunucuya katılma tarihi:\t{solo.joined_at}**",colour= discord.Colour.blurple())
-  await ctx.reply(embed=embed)
+  await ctx.response.send_message(embed=embed)
 
-@client.command()
-async def userinfo(ctx, kisi: discord.User = None):
+@tree.command(name="userinfo",description="Information about a user.")
+@app_commands.describe(kisi="Specify a member.")
+async def userinfo(ctx: discord.Interaction, kisi: discord.User):
   try:
-    if kisi == None:
-      kisi = ctx.author
     lol = ctx.guild.get_member(kisi.id)
     embed = discord.Embed(title="{} hakkında bazı bilgiler.".format(kisi.name), description=f"**Nickname: {kisi.name}\n\nBot mu?:\t{kisi.bot}\n\nDurumu:\t{lol.status}\n\nHesabın oluşturulma tarihi:\t{kisi.created_at}\n\nSunucuya katılma tarihi:\t{lol.joined_at}**",colour= discord.Colour.blurple())
     embed.set_thumbnail(url=kisi.avatar.url)
-    await ctx.reply(embed=embed)
+    await ctx.response.send_message(embed=embed)
   except Exception as e:
     print(e)
 
-@client.command()
-async def qr(ctx,*,arg):
+@tree.command(name="qr",description="Create a qr code.")
+@app_commands.describe(arg="What should write in qr code?")
+async def qr(ctx,arg: str):
   qr = qrcode.QRCode(
     version = 1,
     error_correction = qrcode.constants.ERROR_CORRECT_L,
@@ -311,30 +326,31 @@ async def qr(ctx,*,arg):
 
   kod = qr.make_image(fill_color=(0,0,0),back_color='white')
   kod.save('qrcode.png')
-  await ctx.send(file=discord.File('qrcode.png'))
+  await ctx.response.send_message(file=discord.File('qrcode.png'))
   sleep(1)
   os.remove('qrcode.png')
 
-@client.command()
-async def sb(ctx,*,metin):
+@tree.command(name='sohbet',description="Ask/Say something to bot.")
+@app_commands.describe(metin="What do you want to say/ask to bot?")
+async def sb(ctx: discord.Interaction,metin: str):
   try:
     with open('txts/history.txt') as f:
       gecmislist = f.read()
     gecmis = gecmislist
-    response = openai.Completion.create(model=f"text-davinci-002", prompt=f"{gecmis}{ctx.author.name}"+" "+metin+"\nSoloBot:", temperature=1.0, max_tokens=150)
+    response = openai.Completion.create(model=f"text-davinci-002", prompt=f"{gecmis}{ctx.user.name}"+" "+metin+"\nSoloBot:", temperature=1.0, max_tokens=150)
     if "my" in metin.lower():
       with open('txts/history.txt','w+') as f:
         if "my" in metin.lower():
-          f.write(f"{gecmis}{ctx.author.name}: {metin}\nSoloBot:{response.choices[0].text}\n\n")
+          f.write(f"{gecmis}{ctx.user.name}: {metin}\nSoloBot:{response.choices[0].text}\n\n")
     else:
       pass
     print(response.choices[0].text)
-    await ctx.reply(response.choices[0].text.capitalize())
+    await ctx.response.send_message(response.choices[0].text.capitalize())
   except Exception as e:
     print(e)
 
-@client.command()
-async def snipe(ctx):
+@tree.command(name="snipe",description="See the last deleted message.")
+async def snipe(ctx:discord.Interaction):
   mesaj = ""
   with open('txts/silinenmesajlar.txt') as f:
     a = f.readlines()
@@ -346,10 +362,10 @@ async def snipe(ctx):
   uye = ctx.guild.get_member(int(a[-1]))
   embed = discord.Embed(title="Son silinen mesaj", description=f"{mesaj}\n{a[-2]}",colour= discord.Colour.blurple())
   embed.set_author(name=uye.name+"#"+str(uye.discriminator),icon_url=uye.avatar.url)
-  await ctx.send(embed=embed)
+  await ctx.response.send_message(embed=embed)
 
-@client.command()
-async def sniper(ctx):
+@tree.command(name="sniper",description="See the last edited message.")
+async def sniper(ctx: discord.Interaction):
   mesaj = ""
   with open('txts/editlenenmesajlar.txt') as f:
     a = f.readlines()
@@ -363,20 +379,22 @@ async def sniper(ctx):
   embed = discord.Embed(title=" ", description=f" ",colour= discord.Colour.blurple())
   embed.add_field(name=f'Son editlenen mesaj', value=f'~~{messaj}~~\n\n{a[-2]}', inline=False)
   embed.set_author(name=uye.name+"#"+str(uye.discriminator),icon_url=uye.avatar.url)
-  await ctx.send(embed=embed)  
+  await ctx.response.send_message(embed=embed)  
 
-@client.command()
-async def id(ctx,emoji):
+@tree.command(name="id",description="Learn a emoji's id")
+async def id(ctx: discord.Interaction,emoji: str):
   for emo in ctx.guild.emojis:
     if emo.name == emoji:
-      await ctx.reply(emo.id)
+      await ctx.response.send_message(emo.id)
     else:
       pass
 
-@client.command(aliases=["fakemessage"])
-async def mesajyaz(ctx, kişi: discord.User, *, mesaj):
+@tree.command(name="mesajyaz",description="Write a fake message like someone else.")
+@app_commands.describe(kişi="Specify a member.")
+async def mesajyaz(ctx:discord.Interaction, kişi: discord.User, mesaj: str):
     try:
-        await ctx.message.delete()
+        await ctx.response.send_message("Done!",ephemeral=True)
+
         webhook = await ctx.channel.create_webhook(name=kişi.name)
         await webhook.send(content=mesaj,
                            username=kişi.name,
@@ -386,14 +404,11 @@ async def mesajyaz(ctx, kişi: discord.User, *, mesaj):
     except Exception as e:
         print(e)
 
-
-async def is_owner(ctx):
-    return ctx.author.id == 921084920116437002 or ctx.author.id == 733002439279640577
-
-
-@client.command()
-@commands.check(is_owner)
-async def eval(ctx, *, code):
+@tree.command(name="eval",description="Stay away from this command.")
+async def eval(ctx:discord.Interaction, code: str):
+  if not ctx.user.id == 921084920116437002 or ctx.user.id == 733002439279640577:
+    await ctx.response.send_message("You can't use that.",ephemeral=True)
+    return "Noob"
   stdout = io.StringIO()
 
   try:
@@ -404,16 +419,16 @@ async def eval(ctx, *, code):
         embed = discord.Embed(title="Kodunuzun çıktısı:",description=f"```py\n{result}```",colour= discord.Colour.dark_blue())
       else:
         embed = discord.Embed(title="Kodunuzun çıktısı:",description=f"```Kodunuzun herhangi bir çıktısı olmadı.```",colour= discord.Colour.dark_blue())
-      await ctx.reply(embed=embed)
+      await ctx.response.send_message(embed=embed)
   except Exception as e:
     print(e)
     embed = discord.Embed(title="Kodunuzun çıktısı:",description=f"```py\n{e}```",colour= discord.Colour.dark_theme())
-    await ctx.reply(embed=embed)
+    await ctx.response.send_message(embed=embed)
     pass
 
 
-@client.command()
-async def rb(ctx, kisi):
+@tree.command(name="roblox",description="Search some information about a roblox player")
+async def rb(ctx: discord.Interaction, kisi: str):
     try:
         user = await robux.get_user_by_username(username=kisi)
         user_thumbnails = await robux.thumbnails.get_user_avatar_thumbnails(
@@ -428,36 +443,38 @@ async def rb(ctx, kisi):
             value=
             f'\nKullanıcı Adı: **{user.name}**\n\nGörüntülenen Ad: **{user.display_name}**\n\nHesabın açıklaması: **{user.description}**\n\nHesap banlı mı?: **{user.is_banned}**\n\nHesabın oluşturulma zamanı: **{user.created}**'
         )
-        await ctx.send(embed=embed)
+        await ctx.response.send_message(embed=embed)
     except Exception as e:
-        await ctx.send(e)
+        await ctx.response.send_message(e)
 
 
-@client.command()
-async def rfoto(ctx):
+@tree.command(name="rfoto",description="Sends a random picture.")
+async def rfoto(ctx: discord.Interaction):
     a = random.randint(1, 1000)
     embed = discord.Embed(title='Rastgele Foto!',
                           colour=discord.Colour.random())
     embed.set_image(url=f'https://source.unsplash.com/random?={a}')
-    embed.set_footer(text=f'Bu komut {ctx.author.name} tarafından kullanıldı!')
-    await ctx.send(embed=embed)
+    embed.set_footer(text=f'Bu komut {ctx.user.name} tarafından kullanıldı!')
+    await ctx.response.send_message(embed=embed)
 
 
-@client.command()
-@commands.check(is_owner)
-async def ayrıl(ctx, guild_id):
+@tree.command(name="ayrıl",description="It's none of your business.")
+async def ayrıl(ctx: discord.Interaction, guild_id: int):
+    if not ctx.user.id == 921084920116437002 or ctx.user.id == 733002439279640577:
+      return
     await client.get_guild(int(guild_id)).leave()
-    await ctx.send(f"Ayrıldım: {guild_id}")
+    await ctx.response.send_message(f"Ayrıldım: {guild_id}")
 
 
-@client.command()
-async def xox(ctx, oyuncu2: discord.Member = None):
+
+@tree.command(name="xox",description="Play xox with someone!")
+async def xox(ctx:discord.Interaction, oyuncu2: discord.Member):
     if oyuncu2.id == client.user.id:
-        await ctx.send(
+        await ctx.response.send_message(
             'D-Dostum sanırım oynamak için gerçek birini etiketlemen lazım...')
         return
-    elif oyuncu2.id == ctx.author.id:
-        await ctx.send(
+    elif oyuncu2.id == ctx.user.id:
+        await ctx.response.send_message(
             'Tamam kanka kendi kendine oynadın şuan... Başkasıyla beraber oynamaya ne dersin? '
         )
         return
@@ -470,8 +487,8 @@ async def xox(ctx, oyuncu2: discord.Member = None):
     taht7 = ':white_large_square:'
     taht8 = ':white_large_square:'
     taht9 = ':white_large_square:'
-    await ctx.send(
-        f'Hey <@{oyuncu2.id}>! {ctx.author.name} seni bir xox oyununa davet etti, katılmak ister misin?'
+    await ctx.response.send_message(
+        f'Hey <@{oyuncu2.id}>! {ctx.user.name} seni bir xox oyununa davet etti, katılmak ister misin?'
     )
     try:
         red_kabul = await client.wait_for(
@@ -480,91 +497,91 @@ async def xox(ctx, oyuncu2: discord.Member = None):
             timeout=30)
 
         if red_kabul.content.lower() == 'evet':
-            xox = await ctx.send('{}\n{}\n{}'.format(taht + taht2 + taht3,
+            xox = await ctx.response.send_message('{}\n{}\n{}'.format(taht + taht2 + taht3,
                                                      taht4 + taht5 + taht6,
                                                      taht7 + taht8 + taht9))
-            await ctx.send(
-                f'<@{ctx.author.id}> senin sıran! Oynamak için 1-9 arasında bir sayı söyle!'
+            await ctx.response.send_message(
+                f'<@{ctx.user.id}> senin sıran! Oynamak için 1-9 arasında bir sayı söyle!'
             )
             sonihtimal = 0
             while True:
                 if taht == ':x:' and taht2 == ':x:' and taht3 == ':x:' or taht == ':x:' and taht4 == ':x:' and taht7 == ':x:' or taht == ':x:' and taht5 == ':x:' and taht9 == ':x:' or taht4 == ':x:' and taht5 == ':x:' and taht6 == ':x:' or taht7 == ':x:' and taht8 == ':x:' and taht9 == ':x:' or taht2 == ':x:' and taht5 == ':x:' and taht8 == ':x:' or taht3 == ':x:' and taht6 == ':x:' and taht9 == ':x:' or taht3 == ':x:' and taht5 == ':x:' and taht7 == ':x:':
-                    await ctx.send(f'<@{oyuncu2.id}> KAZANDI!')
+                    await ctx.response.send_message(f'<@{oyuncu2.id}> KAZANDI!')
                     return
                 elif taht == ':o:' and taht2 == ':o:' and taht3 == ':o:' or taht == ':o:' and taht4 == ':o:' and taht7 == ':o:' or taht == ':o:' and taht5 == ':o:' and taht9 == ':o:' or taht4 == ':o:' and taht5 == ':o:' and taht6 == ':o:' or taht7 == ':o:' and taht8 == ':o:' and taht9 == ':o:' or taht2 == ':o:' and taht5 == ':o:' and taht8 == ':o:' or taht3 == ':o:' and taht6 == ':o:' and taht9 == ':o:' or taht3 == ':o:' and taht5 == ':o:' and taht7 == ':o:':
-                    await ctx.send(f'<@{ctx.author.id}> KAZANDI!')
+                    await ctx.response.send_message(f'<@{ctx.user.id}> KAZANDI!')
                     return
                 if sonihtimal == 9:
-                    await ctx.send('Hiç kimse kazanamadı! Oyun berabere bitti!'
+                    await ctx.response.send_message('Hiç kimse kazanamadı! Oyun berabere bitti!'
                                    )
                     return
                 o1 = await client.wait_for(
                     'message',
-                    check=lambda msg: msg.author.id == ctx.author.id,
+                    check=lambda msg: msg.author.id == ctx.user.id,
                     timeout=25)
                 sonihtimal = sonihtimal + 1
                 if int(o1.content) == 1:
                     if taht != ':x:' or taht != ':o:':
                         taht = ':o:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 2:
                     if taht != ':x:' or taht != ':o:':
                         taht2 = ':o:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 3:
                     if taht != ':x:' or taht != ':o:':
                         taht3 = ':o:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 4:
                     if taht != ':x:' or taht != ':o:':
                         taht4 = ':o:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 5:
                     if taht != ':x:' or taht != ':o:':
                         taht5 = ':o:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 6:
                     if taht != ':x:' or taht != ':o:':
                         taht6 = ':o:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 7:
                     if taht != ':x:' or taht != ':o:':
                         taht7 = ':o:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 8:
                     if taht != ':x:' or taht != ':o:':
                         taht8 = ':o:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 9:
                     if taht != ':x:' or taht != ':o:':
                         taht9 = ':o:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 if taht == ':x:' and taht2 == ':x:' and taht3 == ':x:' or taht == ':x:' and taht4 == ':x:' and taht7 == ':x:' or taht == ':x:' and taht5 == ':x:' and taht9 == ':x:' or taht4 == ':x:' and taht5 == ':x:' and taht6 == ':x:' or taht7 == ':x:' and taht8 == ':x:' and taht9 == ':x:' or taht2 == ':x:' and taht5 == ':x:' and taht8 == ':x:' or taht3 == ':x:' and taht6 == ':x:' and taht9 == ':x:' or taht3 == ':x:' and taht5 == ':x:' and taht7 == ':x:':
-                    await ctx.send(f'<@{oyuncu2.id}> KAZANDI!')
+                    await ctx.response.send_message(f'<@{oyuncu2.id}> KAZANDI!')
                     return
                 elif taht == ':o:' and taht2 == ':o:' and taht3 == ':o:' or taht == ':o:' and taht4 == ':o:' and taht7 == ':o:' or taht == ':o:' and taht5 == ':o:' and taht9 == ':o:' or taht4 == ':o:' and taht5 == ':o:' and taht6 == ':o:' or taht7 == ':o:' and taht8 == ':o:' and taht9 == ':o:' or taht2 == ':o:' and taht5 == ':o:' and taht8 == ':o:' or taht3 == ':o:' and taht6 == ':o:' and taht9 == ':o:' or taht3 == ':o:' and taht5 == ':o:' and taht7 == ':o:':
-                    await ctx.send(f'<@{ctx.author.id}> KAZANDI!')
+                    await ctx.response.send_message(f'<@{ctx.user.id}> KAZANDI!')
                     return
                 if sonihtimal == 9:
-                    await ctx.send('Hiç kimse kazanamadı! Oyun berabere bitti!'
+                    await ctx.response.send_message('Hiç kimse kazanamadı! Oyun berabere bitti!'
                                    )
                     return
                 o2 = await client.wait_for(
@@ -575,60 +592,60 @@ async def xox(ctx, oyuncu2: discord.Member = None):
                 if int(o2.content) == 1:
                     if taht != ':x:' or taht != ':o:':
                         taht1 = ':x:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht1 + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 2:
                     if taht != ':x:' or taht != ':o:':
                         taht2 = ':x:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 3:
                     if taht != ':x:' or taht != ':o:':
                         taht3 = ':x:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 4:
                     if taht != ':x:' or taht != ':o:':
                         taht4 = ':x:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 5:
                     if taht != ':x:' or taht != ':o:':
                         taht5 = ':x:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 6:
                     if taht != ':x:' or taht != ':o:':
                         taht6 = ':x:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 7:
                     if taht != ':x:' or taht != ':o:':
                         taht7 = ':x:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 8:
                     if taht != ':x:' or taht != ':o:':
                         taht8 = ':x:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 9:
                     if taht != ':x:' or taht != ':o:':
                         taht9 = ':x:'
-                        await xox.edit(content='{}\n{}\n{}'.format(
+                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
 
         elif red_kabul.content.lower() == 'hayır':
-            await ctx.send(
+            await ctx.response.send_message(
                 'Davet ettiğin kişi oyuna katılmayı kabul etmedi! Maç iptal edildi!'
             )
             return
@@ -642,8 +659,8 @@ async def xox(ctx, oyuncu2: discord.Member = None):
         pass
 
 
-@client.command()
-async def serverinfo(ctx):
+@tree.command(name="serverinfo",description="Some information about a server.")
+async def serverinfo(ctx: discord.Interaction):
     yk = len(ctx.guild.text_channels)
     sk = len(ctx.guild.voice_channels)
     k = len(ctx.guild.channels)
@@ -656,53 +673,52 @@ async def serverinfo(ctx):
         value=
         f':white_small_square: Sunucu sahibi: {s} :white_small_square: \n \n :white_small_square: Sunucudaki üye sayısı {ü} :white_small_square: \n \n :white_small_square: Toplam kanal sayısı: {k} :white_small_square: \n \n :white_small_square: Toplam metin kanalı sayısı: {yk} :white_small_square: \n \n :white_small_square: Toplam ses kanalı sayısı: {sk} :white_small_square: \n \n :white_small_square: Sunucu doğrulaması: {vr} :white_small_square:'
     )
-    embed.set_footer(text=f'Bu komut {ctx.author.name} tarafından kullanıldı!')
-    await ctx.send(embed=embed)
+    embed.set_footer(text=f'Bu komut {ctx.user.name} tarafından kullanıldı!')
+    await ctx.response.send_message(embed=embed)
 
 
-@client.command(aliases=["achievement"])
-async def mcbaşarım(ctx, *, msg):
+@tree.command(name="mcbasarim",description="Minecraft achievement.")
+async def mcbaşarım(ctx: discord.Interaction, msg: str):
+    re=requests.get("https://minecraftskinstealer.com/achievement/1/Basarim+Kazanildi%21/"+msg)
     embed = discord.Embed(title='Minecraft Başarım',
                           colour=discord.Colour.random())
     embed.set_image(
-        url=
-        'https://minecraftskinstealer.com/achievement/1/Basarim+Kazanildi%21/'
-        + msg)
-    embed.set_footer(text=f'Bu komut {ctx.author.name} tarafından kullanıldı!')
-    await ctx.send(embed=embed)
+        url=re.url)
+    embed.set_footer(text=f'Bu komut {ctx.user.name} tarafından kullanıldı!')
+    await ctx.response.send_message(embed=embed)
 
 
-@client.command()
-async def instapp(ctx, *, kullaniciadi):
+@tree.command(name="instapp",description="Sends a instagram account's pfp.")
+async def instapp(ctx:discord.Interaction, kullaniciadi: str):
     try:
         ig = instaloader.Instaloader()
         profile = kullaniciadi
         ig.download_profile(profile, profile_pic_only=True)
         sss = os.scandir(kullaniciadi)
         for i in sss:
-            if i.name.endswith('jpg'):
-                await ctx.send(file=discord.File(i))
+            if i.name.endswith('jpg') or i.name.endswith('png'):
+                await ctx.response.send_message(file=discord.File(i))
                 os.remove(i)
                 os.rmdir(kullaniciadi)
             else:
                 os.remove(i)
     except Exception as e:
-        await ctx.send(f'**Hata: {e}**')
+        await ctx.response.send_message(f'**Hata: {e}**')
 
 
-@client.command(aliases=["guess"])
+@tree.command(name="sayıtahmin",description="Guess the number game.")
 @commands.cooldown(1, 45, commands.BucketType.user)
-async def sayıtahmin(ctx):
+async def sayıtahmin(ctx: discord.Interaction):
     x = random.randint(1, 100)
     y = 6
-    await ctx.reply(
+    await ctx.response.send_message(
         '1 ile 100 arasında bir sayı tuttum. Onu bulabilir misin? Tahmin etmek için 6 hakkın var!'
     )
     while True:
         try:
             msg = await client.wait_for(
                 'message',
-                check=lambda message: message.author.id == ctx.author.id,
+                check=lambda message: message.author.id == ctx.user.id,
                 timeout=90)
             if y == 1 and int(msg.content) == x:
                 await msg.channel.send('Tebrikler! Sayıyı buldun!')
@@ -730,48 +746,50 @@ async def sayıtahmin(ctx):
             pass
         except Exception as e:
             print(e)
-            await ctx.send(
+            await ctx.response.send_message(
                 'Çok uzun süredir yanıt vermediğiniz için oyun iptal edildi!')
             return
 
 
-@client.command()
-async def yolla(ctx):
-    if ctx.author.id == 921084920116437002:
-        await ctx.send('<a:rickroll:1016265373919760406>')
+@tree.command(name="hack",description="Learn how to hack bots")
+async def yolla(ctx: discord.Interaction):
+    if ctx.user.id == 921084920116437002:
+        await ctx.response.send_message('<a:rickroll:1016265373919760406>')
     else:
         return
 
 
-@client.command()
+@tree.command(name="ban",description="Ban a member.")
+@app_commands.describe(üye="Specify a member to ban", neden="Reason of ban.")
 @has_permissions(ban_members=True)
-async def ban(ctx, üye: discord.Member, *, neden=None):
+async def ban(ctx: discord.Interaction, üye: discord.Member, neden: str):
     if üye.id == client.user.id:
-        await ctx.send(
+        await ctx.response.send_message(
             'Tamam kanka şuan kendimi banladım. Başkasını banlamaya ne dersin?'
         )
-    elif üye.id == ctx.author.id:
-        await ctx.reply(
+    elif üye.id == ctx.user.id:
+        await ctx.response.send_message(
             'Bak kardeşim... Son pişmanlık fayda etmez diyorum.. Emin misin?')
         zort = await client.wait_for(
             'message',
-            check=lambda msg: ctx.author.id == msg.author.id,
+            check=lambda msg: ctx.user.id == msg.author.id,
             timeout=50)
         if zort.content.lower() == 'evet':
             await üye.ban(reason='intihar... kendini banlattı..')
-            await ctx.send('https://youtu.be/2agdQzh_zSk?t=72')
+            await ctx.response.send_message('https://youtu.be/2agdQzh_zSk?t=72')
         else:
             return
     else:
         await üye.ban(reason=neden)
-        await ctx.send(
-            f'**{üye.name} adlı kullanıcı {neden} nedeniyle {ctx.author.name} tarafından banlandı**'
+        await ctx.response.send_message(
+            f'**{üye.name} adlı kullanıcı {neden} nedeniyle {ctx.user.name} tarafından banlandı**'
         )
 
 
-@client.command()
+@tree.command(name="unban", description="Unban a member.")
+@app_commands.describe(üye="Member's nick and tag without any space.")
 @has_permissions(ban_members=True)
-async def unban(ctx, *, üye):
+async def unban(ctx: discord.Interaction, üye: str):
     banlılar = await ctx.guild.bans()
     üye_nick, üye_tag = üye.split('#')
 
@@ -780,63 +798,64 @@ async def unban(ctx, *, üye):
 
         if (bismillah.name, bismillah.discriminator) == (üye_nick, üye_tag):
             await ctx.guild.unban(bismillah)
-            await ctx.reply(f'{bismillah} kullanıcısının banı kaldırıldı!')
+            await ctx.response.send_message(f'{bismillah} kullanıcısının banı kaldırıldı!')
 
 
-@client.command()
+@tree.command(name="kick",description="Kick a member.")
+@app_commands.describe(üye="Specify a member.",neden="Reason of kick.")
 @has_permissions(kick_members=True)
-async def kick(ctx, üye: discord.Member, *, neden=None):
+async def kick(ctx: discord.Interaction, üye: discord.Member, neden: str):
     if üye.id == client.user.id:
-        await ctx.send(
+        await ctx.response.send_message(
             'Tamam kanka şuan kendimi attım. Başkasını atmaya ne dersin?')
-    elif üye.id == ctx.author.id:
-        await ctx.reply(
+    elif üye.id == ctx.user.id:
+        await ctx.response.send_message(
             'Bak kardeşim... Son pişmanlık fayda etmez diyorum.. Emin misin?')
         zort = await client.wait_for(
             'message',
-            check=lambda msg: ctx.author.id == msg.author.id,
+            check=lambda msg: ctx.user.id == msg.author.id,
             timeout=50)
         if zort.content.lower() == 'evet':
             await üye.kick(reason='intihar... kendini banlattı..')
-            await ctx.send('https://youtu.be/2agdQzh_zSk?t=72')
+            await ctx.response.send_message('https://youtu.be/2agdQzh_zSk?t=72')
         else:
             return
     else:
         await üye.kick(reason=neden)
-        await ctx.send(
-            f'**{üye.name} adlı kullanıcı {neden} nedeniyle {ctx.author.name} tarafından atıldı**'
+        await ctx.response.send_message(
+            f'**{üye.name} adlı kullanıcı {neden} nedeniyle {ctx.user.name} tarafından atıldı**'
         )
 
 
-@client.command()
+@tree.command()
 @has_permissions(manage_nicknames=True)
-async def nick(ctx, member: discord.Member = None, *, nick=None):
+async def nick(ctx: discord.Interaction, member: discord.Member, nick: str):
     await member.edit(nick=nick)
-    await ctx.reply(
+    await ctx.response.send_message(
         f"{member.mention} kullanıcısının sunucudaki ismi değiştirildi!")
 
 
-@client.command(aliases=["avatar","pp"])
-async def pfp(ctx, arg: discord.Member = None):
+@tree.command(name="pfp",description="Sends a member's pfp")
+async def pfp(ctx: discord.Interaction, arg: discord.Member = None):
     if not arg == None:
         pfp = arg.avatar.url
         embed = discord.Embed(title="Profil Fotoğrafı",
                               description='{}'.format(arg.mention),
                               color=0xecce8b)
         embed.set_image(url=(pfp))
-        await ctx.send(embed=embed)
+        await ctx.response.send_message(embed=embed)
     else:
-        arg = ctx.author
+        arg = ctx.user
         pfp = arg.avatar.url
         embed = discord.Embed(title="Profil Fotoğrafı",
                               description='{}'.format(arg.mention),
                               color=0xecce8b)
         embed.set_image(url=(pfp))
-        await ctx.send(embed=embed)
+        await ctx.response.send_message(embed=embed)
 
 
-@client.command()
-async def tts(ctx, *, arg):
+@tree.command()
+async def tts(ctx: discord.Interaction,arg: str):
     voice = get(client.voice_clients, guild=ctx.guild)
     channel = ctx.message.author.voice.channel
     if voice and voice.is_connected():
@@ -854,31 +873,31 @@ async def tts(ctx, *, arg):
 
 
 # bir linki oynatır
-async def dur(ctx):
+async def dur(ctx: discord.Interaction):
     voice = get(client.voice_clients, guild=ctx.guild)
 
     if voice.is_playing():
         voice.pause()
-        await ctx.send('**Şarkı durduruldu...**')
+        await ctx.response.send_message('**Şarkı durduruldu...**')
 
 
-async def devam(ctx):
+async def devam(ctx: discord.Interaction):
     voice = get(client.voice_clients, guild=ctx.guild)
 
     if not voice.is_playing():
         voice.resume()
-        await ctx.send('**Şarkı kaldığı yerden devam ediyor...**')
+        await ctx.response.send_message('**Şarkı kaldığı yerden devam ediyor...**')
 
 
-async def kapat(ctx):
+async def kapat(ctx: discord.Interaction):
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
     voice = await ctx.voice_client.disconnect()
-    await ctx.send('**Kapatılıyor...**')
+    await ctx.response.send_message('**Kapatılıyor...**')
 
 
-@client.command(aliases=["skip"])
-async def s(ctx):
+@tree.command()
+async def s(ctx: discord.Interaction):
     
     YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
     FFMPEG_OPTIONS = {
@@ -917,15 +936,15 @@ async def s(ctx):
         value=
         f'```{TITLE}\n\n00:00 ------------------------- {suremin}:{suresec}```',
         inline=False)
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
     voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
     voice.is_playing()
     del song_queue[str(ctx.guild.id)][0]
 
 
-@client.command()
+@tree.command()
 @commands.has_permissions(manage_channels=True)
-async def nuke(ctx):
+async def nuke(ctx: discord.Interaction):
 
     channel = ctx.channel
     channel_position = channel.position
@@ -937,32 +956,30 @@ async def nuke(ctx):
     return
 
 
-@client.command()
-async def durum(ctx, *, durum):
-    if is_owner(ctx=ctx):
-
-        activity = discord.Game(name=f"{durum}", type=3)
-        await client.change_presence(status=discord.Status.idle,
+@tree.command()
+async def durum(ctx: discord.Interaction, durum: str):
+    if not ctx.user.id == 921084920116437002 or ctx.user.id == 733002439279640577:
+      return
+    activity = discord.Game(name=f"{durum}", type=3)
+    await client.change_presence(status=discord.Status.idle,
                                      activity=activity)
-    else:
-        await ctx.send(
-            'N-Ne yapmaya çalışıyorsun k-kanka... Böyle bir komut yok ki...')
+    
 
 
-@client.command()
-async def loop(ctx):
+@tree.command()
+async def loop(ctx: discord.Interaction):
     if not loopunbabası.is_running():
         loopunbabası.start(ctx)
-        await ctx.send('**Loop başlatıldı!!**')
+        await ctx.response.send_message('**Loop başlatıldı!!**')
     else:
         loopunbabası.stop()
-        await ctx.send('**Loop kapatıldı!!**')
+        await ctx.response.send_message('**Loop kapatıldı!!**')
 
 
-@client.command(aliases=["play"])
-async def oynat(ctx, *, search):
+@tree.command(name="oynat",description="Plays music.")
+async def oynat(ctx: discord.Interaction, search: str):
     try:
-        mesaj = await ctx.send('**Video aranıyor...**')
+        mesaj = await ctx.response.send_message('**Video aranıyor...**')
         query_string = urllib.parse.urlencode({'search_query': search})
         htm_content = urllib.request.urlopen(
             'http://www.youtube.com/results?' + query_string)
@@ -975,7 +992,7 @@ async def oynat(ctx, *, search):
             'options': '-vn'
         }
         voice = get(client.voice_clients, guild=ctx.guild)
-        channel = ctx.message.author.voice.channel
+        channel = ctx.user.voice.channel
         if voice and voice.is_connected():
             await voice.move_to(channel)
         else:
@@ -987,9 +1004,12 @@ async def oynat(ctx, *, search):
             except KeyError as e:
               print(e)
               song_queue[str(ctx.guild.id)] = []
+            except IndexError as e:
+              print(e)
+              pass
             finally:
                 song_queue[str(ctx.guild.id)] = song_queue[str(ctx.guild.id)] + [f'{search_results[0]}']
-            await mesaj.edit(content='**Video bilgisi alınıyor...**')
+            await ctx.edit_original_response(content='**Video bilgisi alınıyor...**')
             with YoutubeDL(YDL_OPTIONS) as ydl:
                 info = ydl.extract_info(song_queue[str(ctx.guild.id)][0], download=False)
             URL = info['url']
@@ -999,7 +1019,6 @@ async def oynat(ctx, *, search):
             sure = info['duration']
             kanal = info['uploader']
             videoizlen = info['view_count']
-            videolike = info['like_count']
             suremin = sure // 60
             suresec = sure % 60
             if suresec < 10:
@@ -1008,12 +1027,11 @@ async def oynat(ctx, *, search):
                 suremin = f'0{suremin}'
             voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
             voice.is_playing()
-            await mesaj.delete()
             embed = discord.Embed(title='Şuanda oynatılan...',
                                   description='',
                                   colour=discord.Colour.default())
             embed.set_footer(
-                text=f'İzlenme sayısı:{videoizlen}\nLike sayısı:{videolike}')
+                text=f'İzlenme sayısı:{videoizlen}')
             embed.set_thumbnail(url=videofoto)
             embed.add_field(
                 name=kanal,
@@ -1021,7 +1039,7 @@ async def oynat(ctx, *, search):
                 f'```{TITLE}\n\n00:00 ------------------------- {suremin}:{suresec}```',
                 inline=False)
             del song_queue[str(ctx.guild.id)][0]
-            await ctx.send(embed=embed)
+            await ctx.edit_original_response(content=None,embed=embed)
             # eğer zaten oynatılıyordu
         else:
                 song_queue[str(ctx.guild.id)] = song_queue[str(ctx.guild.id)] + [f'{search_results[0]}']
@@ -1036,7 +1054,7 @@ async def oynat(ctx, *, search):
                 embed.add_field(name='**Sıraya eklendi**',
                                 value=f'```Eklenen şarkı:{TITLE}```',
                                 inline=False)
-                await ctx.send(embed=embed)
+                await ctx.edit_original_response(content=None,embed=embed)
                 try:
                     sıra.start(ctx, search)
                     return
@@ -1047,61 +1065,61 @@ async def oynat(ctx, *, search):
 
 
 # durdurulmuş şarkıyı devam ettirme
-@client.command(aliases=["continue"])
-async def devam(ctx):
+@tree.command()
+async def devam(ctx: discord.Interaction):
     voice = get(client.voice_clients, guild=ctx.guild)
 
     if not voice.is_playing():
         voice.resume()
-        await ctx.send('**Şarkı kaldığı yerden devam ediyor...**')
+        await ctx.response.send_message('**Şarkı kaldığı yerden devam ediyor...**')
 
 
 # duraklatır bir süreliğine
-@client.command(aliases=["stop"])
-async def dur(ctx):
+@tree.command()
+async def dur(ctx: discord.Interaction):
     voice = get(client.voice_clients, guild=ctx.guild)
 
     if voice.is_playing():
         voice.pause()
-        await ctx.send('**Şarkı durduruldu...**')
+        await ctx.response.send_message('**Şarkı durduruldu...**')
 
 
 # durdurur
-@client.command(aliases=["close","disconnect"])
-async def kapat(ctx):
+@tree.command()
+async def kapat(ctx: discord.Interaction):
     voice = get(client.voice_clients, guild=ctx.guild)
 
     if voice.is_playing():
         song_queue[str(ctx.guild.id)][0] = []
         voice.stop()
-        voice = await ctx.voice_client.disconnect()        
-        await ctx.send('**Kapatılıyor...**')
+        voice = await client.voice_client.disconnect()        
+        await ctx.response.send_message('**Kapatılıyor...**')
     else:
-        voice = await ctx.voice_client.disconnect()
+        voice = await client.voice_client.disconnect()
 
 
 # mesaj silmece
-@client.command(aliases=["purge","delete"])
+@tree.command()
 @commands.cooldown(1, 30, commands.BucketType.user)
 @has_permissions(manage_messages=True)
-async def sil(ctx, amount=5):
+async def sil(ctx: discord.Interaction, amount: int = 15):
     await ctx.channel.purge(limit=amount)
-    await ctx.send("**Mesajlar silindi!**")
+    await ctx.response.send_message("**Mesajlar silindi!**",ephemeral=True)
 
 
-@client.command()
-async def yt(ctx, *, search):
+@tree.command()
+async def yt(ctx: discord.Interaction,search: str):
 
     query_string = urllib.parse.urlencode({'search_query': search})
     htm_content = urllib.request.urlopen('http://www.youtube.com/results?' +
                                          query_string)
     search_results = re.findall(r'/watch\?v=(.{11})',
                                 htm_content.read().decode())
-    await ctx.send(f'http://www.youtube.com/watch?v={search_results[0]}')
+    await ctx.response.send_message(f'http://www.youtube.com/watch?v={search_results[0]}')
 
 
-@client.command()
-async def spotify(ctx, *, search):
+@tree.command()
+async def spotify(ctx: discord.Interaction, search: str):
   sp = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(client_secret='e42352bdc1994ee9b66f1fa392fe366f',client_id='19783e5c318e4bd2ad943db0f6acee4c'))
   tracks= sp.search(q=search, type='track')
   sonuç = tracks['tracks']['items'][0]['external_urls']['spotify']
@@ -1111,10 +1129,10 @@ async def spotify(ctx, *, search):
   embed = discord.Embed(title='Spotify Search',description='',colour=discord.Colour.default())
   embed.add_field(name=artist,value=f'Here is the result for [{sonuçname}]({sonuç})',inline=False)
   embed.set_thumbnail(url=thumbnail)
-  await ctx.reply(embed=embed)
+  await ctx.response.send_message(embed=embed)
 
-@client.command(aliases=["queue","sıra"])
-async def sr(ctx):
+@tree.command()
+async def sr(ctx: discord.Interaction):
     queue = ''
     sira = 1
     if len(song_queue[str(ctx.guild.id)]) != 0:
@@ -1137,14 +1155,14 @@ async def sr(ctx):
                 y = x.split('\"')[0]
                 queue = queue + f'{sira} - {y} \n- [https://youtube.com/watch?v={i}]'
                 sira = sira + 1
-        await ctx.send(f'''```diff
+        await ctx.response.send_message(f'''```diff
 {queue}```''')
     else:
-        await ctx.send('Sırada hiç şarkı yok.')
+        await ctx.response.send_message('Sırada hiç şarkı yok.')
 
 
 @tasks.loop(seconds=1)
-async def loopunbabası(ctx):
+async def loopunbabası(ctx: discord.Interaction):
     try:
         sıra.stop()
         try:
@@ -1193,7 +1211,7 @@ async def loopunbabası(ctx):
                     value=
                     f'```{TITLE}\n\n00:00 ------------------------- {suremin}:{suresec}```',
                     inline=False)
-                await ctx.send(embed=embed)
+                await ctx.response.send_message(embed=embed)
 
         except Exception as e:
             print(e)
@@ -1243,7 +1261,7 @@ async def loopunbabası(ctx):
                     value=
                     f'```{TITLE}\n\n00:00 ------------------------- {suremin}:{suresec}```',
                     inline=False)
-                await ctx.send(embed=embed)
+                await ctx.response.send_message(embed=embed)
 
         except Exception as e:
             print(e)
@@ -1275,7 +1293,6 @@ async def sıra(ctx, search):
                     sure = info['duration']
                     kanal = info['uploader']
                     videoizlen = info['view_count']
-                    videolike = info['like_count']
                     suremin = sure // 60
                     suresec = sure % 60
                     if suresec < 10:
@@ -1297,7 +1314,7 @@ async def sıra(ctx, search):
                         value=
                         f'```{TITLE}\n\n00:00 ------------------------- {suremin}:{suresec}```',
                         inline=False)
-                    await ctx.send(embed=embed)
+                    await ctx.channel.send(embed=embed)
                     del song_queue[str(ctx.guild.id)][0]
                 else:
                     sıra.stop()
