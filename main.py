@@ -500,7 +500,7 @@ async def xox(ctx:discord.Interaction, oyuncu2: discord.Member):
             xox = await ctx.response.send_message('{}\n{}\n{}'.format(taht + taht2 + taht3,
                                                      taht4 + taht5 + taht6,
                                                      taht7 + taht8 + taht9))
-            await ctx.response.send_message(
+            await ctx.channel.send(
                 f'<@{ctx.user.id}> senin sıran! Oynamak için 1-9 arasında bir sayı söyle!'
             )
             sonihtimal = 0
@@ -753,10 +753,8 @@ async def sayıtahmin(ctx: discord.Interaction):
 
 @tree.command(name="hack",description="Learn how to hack bots")
 async def yolla(ctx: discord.Interaction):
-    if ctx.user.id == 921084920116437002:
-        await ctx.response.send_message('<a:rickroll:1016265373919760406>')
-    else:
-        return
+  await ctx.response.send_message('<a:rickroll:1016265373919760406>')
+
 
 
 @tree.command(name="ban",description="Ban a member.")
@@ -854,9 +852,13 @@ async def pfp(ctx: discord.Interaction, arg: discord.Member = None):
         await ctx.response.send_message(embed=embed)
 
 
-@tree.command()
-async def tts(ctx: discord.Interaction,arg: str):
+@tree.command(name="tts",description="Text to speech.")
+@app_commands.describe(text="Write a text.")
+async def tts(ctx: discord.Interaction,text: str):
     voice = get(client.voice_clients, guild=ctx.guild)
+    if not ctx.message.author.voice.channel:
+      ctx.response.send_message("You are not connected to any voice channel.")
+      return
     channel = ctx.message.author.voice.channel
     if voice and voice.is_connected():
         await voice.move_to(channel)
@@ -979,7 +981,10 @@ async def loop(ctx: discord.Interaction):
 @tree.command(name="oynat",description="Plays music.")
 async def oynat(ctx: discord.Interaction, search: str):
     try:
-        mesaj = await ctx.response.send_message('**Video aranıyor...**')
+        if not ctx.message.author.voice.channel:
+          ctx.response.send_message("You are not connected to any voice channel.")
+          return
+        await ctx.response.send_message('**Video aranıyor...**')
         query_string = urllib.parse.urlencode({'search_query': search})
         htm_content = urllib.request.urlopen(
             'http://www.youtube.com/results?' + query_string)
