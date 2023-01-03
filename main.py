@@ -22,9 +22,10 @@ import instaloader
 from roblox import Client
 from roblox.thumbnails import AvatarThumbnailType
 import json
-import io
+import io, asyncio
 import contextlib
 import typing
+from datetime import datetime
 # Intents
 intents = discord.Intents.all()
 intents.members = True
@@ -45,6 +46,7 @@ class aclient(discord.Client):
     activity = discord.Game(name="/yardım | /help", type=3)
     await client.change_presence(status=discord.Status.idle, activity=activity)
     print("Durum ayarlandı!")
+    spotimer.start()
     if not self.synced:
       await tree.sync()
       self.synced = True
@@ -277,7 +279,11 @@ async def self(interaction: discord.Interaction, prompt: str):
     f.write(icerik)
   await interaction.channel.send(f'Here is your picture, {interaction.user.mention}!\nPrompt:{prompt}', file = discord.File("image.png"))
   os.remove('image.png')
-      
+
+@tree.command(name="history", description="Creator's song history.")
+async def history(ctx:discord.Interaction):
+  await ctx.response.send_message(file=discord.File('txts/history.txt'))
+  
 @tree.command(name="deneme",description="Just for fun")
 async def deneme(ctx: discord.Interaction):
   select = discord.ui.Select(options = [
@@ -387,6 +393,115 @@ async def help(ctx:discord.Interaction,help: typing.Literal["mod","music","fun"]
         inline=False)
     await ctx.response.send_message(embed=embed)
 
+def checkle(react,user):
+  return react.emoji == "🔫"
+@tree.command(name="standoff",description="Who is the best cowboy?")
+async def standoff(ctx, player2: discord.User):
+    # Bot tarafından bir mesaj gönderin
+    await ctx.response.send_message('Started.',ephemeral=True)
+    mesaj = await ctx.channel.send(f'Welcome to the cowboy game {ctx.user.mention} {player2.mention}! Suddenly a emoji is going to appear. The player who clicks the emoji first wins!')
+    idler = [ctx.user.id,player2.id]
+    # Kullanıcıların tabanca emojisi ile tepki vermesini bekleyin
+    try:
+        sleep(random.randint(2,5))
+        await mesaj.add_reaction("🔫")
+        reaction = await client.wait_for('reaction_add', timeout=3.0, check=checkle)
+    except asyncio.TimeoutError:
+        await ctx.channel.send('Time is up! Use the "/standoff" command to restart the game.')
+    else:
+        # Eğer bir kullanıcı tepki vermişse oyunu bitirin
+        
+          print(reaction)
+          print(reaction[1].id)
+          if reaction[1].id in idler:
+            await ctx.channel.send(f'{reaction[1].mention} won! Congratulations! Use the "/standoff" command to restart the game.')
+            
+          else:
+            pass
+
+@tree.command(name="fight", description="A basic fight game that you can play with your friends!")
+async def fight_game(ctx, user2: discord.User):
+    if user2.id == client.user.id:
+      await ctx.response.send_message('CHOOSE A REAL PERSON TO PLAY')
+      return
+    user1 = ctx.user
+    user1_health = 100
+    user2_health = 100
+    user1_blocked = False
+    user2_blocked = False
+    await ctx.response.send_message("Kavga başlatıldı agaaa",ephemeral=True)
+    while user1_health > 0 and user2_health > 0:
+        await ctx.channel.send("Choose your attack: 1. Punch 2. Kick 3. Block \n {}".format(user1.mention))
+        attack = await client.wait_for("message", check=lambda message: message.author.id == user1.id)
+        if attack.content == "1":
+          if user2_blocked == False:
+            hasar = random.randint(5,19)
+          else:
+            hasar = random.randint(1,7)
+            user2_blocked = False
+          user2_health -= hasar
+          await ctx.channel.send(f"{user1.mention} used a punch attack and dealt {hasar} damage!")
+        elif attack.content == "2":
+            hasar = random.randint(1,100)
+            if hasar < 35:
+              xD = random.randint(10,15)
+              user1_health -= xD
+              await ctx.channel.send(f'You hurt yourself when you kicked and dealt {xD} damage.')
+            else:
+              if user2_blocked == False:
+                real = random.randint(15,25)
+              else:
+                real = random.randint(1,7)
+                user2_blocked = False
+              
+              user2_health -= real
+              await ctx.channel.send(f"{user1.mention} used a kick attack and dealt {real} damage!")
+        elif attack.content == "3":
+            await ctx.channel.send(f"{user1.mention} blocked the attack! {user1.mention} will get less damage just for one time.")
+            user1_blocked = True
+          
+        else:
+            await ctx.channel.send("Invalid attack choice. Please try again.")
+        await ctx.channel.send(f"{user2.mention}! Your health is now at {user2_health}.")
+        
+        if user2_health <= 0:
+            await ctx.channel.send(f"{user1.mention} won the game!")
+            return
+        
+        await ctx.channel.send("Choose your attack: 1. Punch 2. Kick 3. Block")
+        attack = await client.wait_for("message", check=lambda message: message.author.id == user2.id)
+        if attack.content == "1":
+          if user1_blocked == False:
+            hasar = random.randint(5,19)
+          else:
+            hasar = random.randint(3,10)
+            user1_blocked = False
+          user1_health -= hasar
+          await ctx.channel.send(f"{user2.name} used a punch attack and dealt {hasar} damage!")
+        elif attack.content == "2":
+            hasar = random.randint(1,100)
+            if hasar < 35:
+              xD = random.randint(10,15)
+              user2_health -= xD
+              await ctx.channel.send(f'You hurt yourself when you kicked and dealt {xD} damage.')
+            else:
+              if user1_blocked == False:
+                real = random.randint(15,25)
+              else:
+                real = random.randint(3,10)
+                user1_blocked = False
+              user1_health -= real
+              await ctx.channel.send(f"You used a kick attack and dealt {real} damage!")
+        elif attack.content == "3":
+            await ctx.channel.send(f"{user2.mention} blocked the attack! {user2.mention} will get less damage just for one time.")
+            user2_blocked = True
+        else:
+            await ctx.channel.send("Invalid attack choice. Please try again.")
+        await ctx.channel.send(f"{user1.mention}! Your health is now at {user1_health}.")
+        if user1_health <= 0:
+            await ctx.channel.send(f"{user2.mention} won the game!")
+            return
+
 
 @tree.command(name="botinfo",description="Information about bot.")
 async def botinfo(ctx: discord.Interaction):
@@ -431,25 +546,6 @@ async def qr(ctx,arg: str):
   await ctx.response.send_message(file=discord.File('qrcode.png'))
   sleep(1)
   os.remove('qrcode.png')
-
-@tree.command(name='sohbet',description="Ask/Say something to bot.")
-@app_commands.describe(metin="What do you want to say/ask to bot?")
-async def sb(ctx: discord.Interaction,metin: str):
-  try:
-    with open('txts/history.txt') as f:
-      gecmislist = f.read()
-    gecmis = gecmislist
-    response = openai.Completion.create(model=f"text-davinci-002", prompt=f"{gecmis}{ctx.user.name}"+" "+metin+"\nSoloBot:", temperature=1.0, max_tokens=150)
-    if "my" in metin.lower():
-      with open('txts/history.txt','w+') as f:
-        if "my" in metin.lower():
-          f.write(f"{gecmis}{ctx.user.name}: {metin}\nSoloBot:{response.choices[0].text}\n\n")
-    else:
-      pass
-    print(response.choices[0].text)
-    await ctx.response.send_message(response.choices[0].text.capitalize())
-  except Exception as e:
-    print(e)
 
 @tree.command(name="snipe",description="See the last deleted message.")
 async def snipe(ctx:discord.Interaction):
@@ -573,11 +669,11 @@ async def ayrıl(ctx: discord.Interaction, guild_id: int):
 async def xox(ctx:discord.Interaction, oyuncu2: discord.Member):
     if oyuncu2.id == client.user.id:
         await ctx.response.send_message(
-            'D-Dostum sanırım oynamak için gerçek birini etiketlemen lazım...')
+            'B-Bro... I think you need a real person to play with... ')
         return
     elif oyuncu2.id == ctx.user.id:
         await ctx.response.send_message(
-            'Tamam kanka kendi kendine oynadın şuan... Başkasıyla beraber oynamaya ne dersin? '
+            'Okay bro you played with yourself and u won. Now wanna play with a real person?'
         )
         return
     taht = ':white_large_square:'
@@ -590,7 +686,7 @@ async def xox(ctx:discord.Interaction, oyuncu2: discord.Member):
     taht8 = ':white_large_square:'
     taht9 = ':white_large_square:'
     await ctx.response.send_message(
-        f'Hey <@{oyuncu2.id}>! {ctx.user.name} seni bir xox oyununa davet etti, katılmak ister misin?'
+        f'Hey <@{oyuncu2.id}>! {ctx.user.name} invited you to a tic-tac-toe game! Do you want to join?'
     )
     try:
         red_kabul = await client.wait_for(
@@ -598,23 +694,23 @@ async def xox(ctx:discord.Interaction, oyuncu2: discord.Member):
             check=lambda message: message.author.id == oyuncu2.id,
             timeout=30)
 
-        if red_kabul.content.lower() == 'evet':
-            xox = await ctx.response.send_message('{}\n{}\n{}'.format(taht + taht2 + taht3,
+        if red_kabul.content.lower() == 'yes':
+            xox = await ctx.channel.send('{}\n{}\n{}'.format(taht + taht2 + taht3,
                                                      taht4 + taht5 + taht6,
                                                      taht7 + taht8 + taht9))
             await ctx.channel.send(
-                f'<@{ctx.user.id}> senin sıran! Oynamak için 1-9 arasında bir sayı söyle!'
+                f'<@{ctx.user.id}> your turn! Say a number between 1-9!'
             )
             sonihtimal = 0
             while True:
                 if taht == ':x:' and taht2 == ':x:' and taht3 == ':x:' or taht == ':x:' and taht4 == ':x:' and taht7 == ':x:' or taht == ':x:' and taht5 == ':x:' and taht9 == ':x:' or taht4 == ':x:' and taht5 == ':x:' and taht6 == ':x:' or taht7 == ':x:' and taht8 == ':x:' and taht9 == ':x:' or taht2 == ':x:' and taht5 == ':x:' and taht8 == ':x:' or taht3 == ':x:' and taht6 == ':x:' and taht9 == ':x:' or taht3 == ':x:' and taht5 == ':x:' and taht7 == ':x:':
-                    await ctx.response.send_message(f'<@{oyuncu2.id}> KAZANDI!')
+                    await ctx.channel.send(f'<@{oyuncu2.id}> WON!')
                     return
                 elif taht == ':o:' and taht2 == ':o:' and taht3 == ':o:' or taht == ':o:' and taht4 == ':o:' and taht7 == ':o:' or taht == ':o:' and taht5 == ':o:' and taht9 == ':o:' or taht4 == ':o:' and taht5 == ':o:' and taht6 == ':o:' or taht7 == ':o:' and taht8 == ':o:' and taht9 == ':o:' or taht2 == ':o:' and taht5 == ':o:' and taht8 == ':o:' or taht3 == ':o:' and taht6 == ':o:' and taht9 == ':o:' or taht3 == ':o:' and taht5 == ':o:' and taht7 == ':o:':
-                    await ctx.response.send_message(f'<@{ctx.user.id}> KAZANDI!')
+                    await ctx.channel.send(f'<@{ctx.user.id}> WON!')
                     return
                 if sonihtimal == 9:
-                    await ctx.response.send_message('Hiç kimse kazanamadı! Oyun berabere bitti!'
+                    await ctx.channel.send('Tie.'
                                    )
                     return
                 o1 = await client.wait_for(
@@ -625,65 +721,68 @@ async def xox(ctx:discord.Interaction, oyuncu2: discord.Member):
                 if int(o1.content) == 1:
                     if taht != ':x:' or taht != ':o:':
                         taht = ':o:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 2:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht2 != ':x:' or taht2 != ':o:':
                         taht2 = ':o:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 3:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht3 != ':x:' or taht3 != ':o:':
                         taht3 = ':o:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 4:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht4 != ':x:' or taht4 != ':o:':
                         taht4 = ':o:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 5:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht5 != ':x:' or taht5 != ':o:':
                         taht5 = ':o:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 6:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht6 != ':x:' or taht6 != ':o:':
                         taht6 = ':o:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 7:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht7 != ':x:' or taht7 != ':o:':
                         taht7 = ':o:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 8:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht8 != ':x:' or taht8 != ':o:':
                         taht8 = ':o:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o1.content) == 9:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht9 != ':x:' or taht9 != ':o:':
                         taht9 = ':o:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
+                else:
+                  await ctx.channel.send('Unexpected answer!')
+                  return
                 if taht == ':x:' and taht2 == ':x:' and taht3 == ':x:' or taht == ':x:' and taht4 == ':x:' and taht7 == ':x:' or taht == ':x:' and taht5 == ':x:' and taht9 == ':x:' or taht4 == ':x:' and taht5 == ':x:' and taht6 == ':x:' or taht7 == ':x:' and taht8 == ':x:' and taht9 == ':x:' or taht2 == ':x:' and taht5 == ':x:' and taht8 == ':x:' or taht3 == ':x:' and taht6 == ':x:' and taht9 == ':x:' or taht3 == ':x:' and taht5 == ':x:' and taht7 == ':x:':
-                    await ctx.response.send_message(f'<@{oyuncu2.id}> KAZANDI!')
+                    await ctx.channel.send(f'<@{oyuncu2.id}> WON!')
                     return
                 elif taht == ':o:' and taht2 == ':o:' and taht3 == ':o:' or taht == ':o:' and taht4 == ':o:' and taht7 == ':o:' or taht == ':o:' and taht5 == ':o:' and taht9 == ':o:' or taht4 == ':o:' and taht5 == ':o:' and taht6 == ':o:' or taht7 == ':o:' and taht8 == ':o:' and taht9 == ':o:' or taht2 == ':o:' and taht5 == ':o:' and taht8 == ':o:' or taht3 == ':o:' and taht6 == ':o:' and taht9 == ':o:' or taht3 == ':o:' and taht5 == ':o:' and taht7 == ':o:':
-                    await ctx.response.send_message(f'<@{ctx.user.id}> KAZANDI!')
+                    await ctx.channel.send(f'<@{ctx.user.id}> WON!')
                     return
                 if sonihtimal == 9:
-                    await ctx.response.send_message('Hiç kimse kazanamadı! Oyun berabere bitti!'
+                    await ctx.channel.send('Tie.'
                                    )
                     return
                 o2 = await client.wait_for(
@@ -694,66 +793,71 @@ async def xox(ctx:discord.Interaction, oyuncu2: discord.Member):
                 if int(o2.content) == 1:
                     if taht != ':x:' or taht != ':o:':
                         taht1 = ':x:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht1 + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 2:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht2 != ':x:' or taht2 != ':o:':
                         taht2 = ':x:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 3:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht3 != ':x:' or taht3 != ':o:':
                         taht3 = ':x:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 4:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht4 != ':x:' or taht4 != ':o:':
                         taht4 = ':x:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 5:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht5 != ':x:' or taht5 != ':o:':
                         taht5 = ':x:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 6:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht6 != ':x:' or taht6 != ':o:':
                         taht6 = ':x:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 7:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht7 != ':x:' or taht7 != ':o:':
                         taht7 = ':x:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 8:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht8 != ':x:' or taht8 != ':o:':
                         taht8 = ':x:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
                 elif int(o2.content) == 9:
-                    if taht != ':x:' or taht != ':o:':
+                    if taht9 != ':x:' or taht9 != ':o:':
                         taht9 = ':x:'
-                        await xox.edit_original_response(content='{}\n{}\n{}'.format(
+                        await xox.edit(content='{}\n{}\n{}'.format(
                             taht + taht2 + taht3, taht4 + taht5 +
                             taht6, taht7 + taht8 + taht9))
-
-        elif red_kabul.content.lower() == 'hayır':
-            await ctx.response.send_message(
-                'Davet ettiğin kişi oyuna katılmayı kabul etmedi! Maç iptal edildi!'
+                else:
+                  await ctx.channel.send('Unexpected answer!')
+                  return
+        elif red_kabul.content.lower() == 'no':
+            await ctx.channel.send(
+                'The person you invited didn\'t accept your invite.'
             )
             return
 
         else:
+            await ctx.channel.send('Unexpected answer!')
             pass
+    except asyncio.TimeoutError:
+        await ctx.channel.send("It took too long to respond!")
     except ValueError:
         pass
     except Exception as e:
@@ -814,7 +918,7 @@ async def sayıtahmin(ctx: discord.Interaction):
     x = random.randint(1, 100)
     y = 6
     await ctx.response.send_message(
-        '1 ile 100 arasında bir sayı tuttum. Onu bulabilir misin? Tahmin etmek için 6 hakkın var!'
+        'I have chosen a number between 1 and 100. Can you guess it? You have 6 tries to guess!'
     )
     while True:
         try:
@@ -823,33 +927,33 @@ async def sayıtahmin(ctx: discord.Interaction):
                 check=lambda message: message.author.id == ctx.user.id,
                 timeout=90)
             if y == 1 and int(msg.content) == x:
-                await msg.channel.send('Tebrikler! Sayıyı buldun!')
+                await msg.channel.send('Congratulations! You found the number!')
             elif y == 1:
                 await msg.channel.send(
-                    f'Malesef hakkın bitti... **Tuttuğum sayı: {x}**')
+                    f'Unfortunately, your tries have run out... **The number I chose was: {x}**')
                 break
 
             elif int(msg.content) > x:
                 y = y - 1
                 await msg.channel.send(
-                    f'Tuttuğum sayı daha **küçük** bir sayı! **{y} hakkın kaldı!**'
+                    f'The number I chose is a **smaller** number! ** You have {y} tries remaining!**'
                 )
 
             elif int(msg.content) < x:
                 y = y - 1
                 await msg.channel.send(
-                    f'Tuttuğum sayı daha **büyük** bir sayı! **{y} hakkın kaldı!**'
+                    f'The number I chose is a **bigger** number! ** You have {y} tries remaining!**'
                 )
 
             else:
-                await msg.channel.send('Tebrikler! Sayıyı buldun!')
+                await msg.channel.send('Congratulations! You found the number!')
                 break
         except ValueError:
             pass
         except Exception as e:
             print(e)
             await ctx.response.send_message(
-                'Çok uzun süredir yanıt vermediğiniz için oyun iptal edildi!')
+                'You took too long to respond!')
             return
 
 
@@ -862,10 +966,10 @@ async def yolla(ctx: discord.Interaction):
 @tree.command(name="ban",description="Ban a member.")
 @app_commands.describe(üye="Specify a member to ban", neden="Reason of ban.")
 @discord.app_commands.checks.has_permissions(ban_members=True)
-async def ban(ctx: discord.Interaction, üye: discord.Member, neden: str):
+async def ban(ctx: discord.Interaction, üye: discord.Member, neden: str, mesajsil: int):
     if üye.id == client.user.id:
         await ctx.response.send_message(
-            'Tamam kanka şuan kendimi banladım. Başkasını banlamaya ne dersin?'
+            'Okay bro I banned myself. Wanna ban someone else now?'
         )
     elif üye.id == ctx.user.id:
         await ctx.response.send_message(
@@ -875,14 +979,14 @@ async def ban(ctx: discord.Interaction, üye: discord.Member, neden: str):
             check=lambda msg: ctx.user.id == msg.author.id,
             timeout=50)
         if zort.content.lower() == 'evet':
-            await üye.ban(reason='intihar... kendini banlattı..')
+            await üye.ban(reason='intihar... kendini banlattı..',delete_message_days=0)
             await ctx.response.send_message('https://youtu.be/2agdQzh_zSk?t=72')
         else:
             return
     else:
-        await üye.ban(reason=neden)
+        await üye.ban(reason=neden,delete_message_days=mesajsil)
         await ctx.response.send_message(
-            f'**{üye.name} adlı kullanıcı {neden} nedeniyle {ctx.user.name} tarafından banlandı**'
+            f'**{ctx.user.name} banned a member named {üye.name}. Reason:{neden}**'
         )
 
 
@@ -939,7 +1043,7 @@ async def nick(ctx: discord.Interaction, member: discord.Member, nick: str):
 async def pfp(ctx: discord.Interaction, arg: discord.Member = None):
     if not arg == None:
         pfp = arg.avatar.url
-        embed = discord.Embed(title="Profil Fotoğrafı",
+        embed = discord.Embed(title="Profile Picture",
                               description='{}'.format(arg.mention),
                               color=0xecce8b)
         embed.set_image(url=(pfp))
@@ -947,7 +1051,7 @@ async def pfp(ctx: discord.Interaction, arg: discord.Member = None):
     else:
         arg = ctx.user
         pfp = arg.avatar.url
-        embed = discord.Embed(title="Profil Fotoğrafı",
+        embed = discord.Embed(title="Profile Picture",
                               description='{}'.format(arg.mention),
                               color=0xecce8b)
         embed.set_image(url=(pfp))
@@ -1395,7 +1499,7 @@ async def sıra(ctx, search):
                                           colour=discord.Colour.default())
                     embed.set_footer(
                         text=
-                        f'İzlenme sayısı {videoizlen}\nLike sayısı:{videolike}'
+                        f'İzlenme sayısı {videoizlen}'
                     )
                     embed.set_thumbnail(url=videofoto)
                     embed.add_field(
@@ -1415,7 +1519,66 @@ async def sıra(ctx, search):
             pass
         else:
             sıra.stop()
-
+# Spotify dinlediğin için teşekkürler. Ciddiyim.
+with open('jsons/calan.json') as f:
+  calan_json = f.read()
+calan = json.loads(calan_json)
+starting = None
+ending = None
+sure=None
+@tasks.loop(seconds=1)
+async def spotimer():
+  ctx = client.get_guild(1015344885433372732)
+  yunus = ctx.get_member(921084920116437002)
+  global calan 
+  global starting 
+  global ending
+  global sure
+  spotify_dinledigin_icin_tesekkurler_ciddiyim_radyo_dinliyor_olabilirdin_kaset_caliyor_olabilirdin_plak_caliyor_olabilirdin_veya_sekiz_parcalik_teyp_de_dinliyor_olabilirdin_ama_spotify_dinliyorsun_tekrar_tesekkurler_ve_hala_tadini_cikarabilecegin_onlarca_farklı_calma_listesi_var = yunus.activities
+  if spotify_dinledigin_icin_tesekkurler_ciddiyim_radyo_dinliyor_olabilirdin_kaset_caliyor_olabilirdin_plak_caliyor_olabilirdin_veya_sekiz_parcalik_teyp_de_dinliyor_olabilirdin_ama_spotify_dinliyorsun_tekrar_tesekkurler_ve_hala_tadini_cikarabilecegin_onlarca_farklı_calma_listesi_var == None:
+    pass
+  else:
+    buldum = None
+    for i in spotify_dinledigin_icin_tesekkurler_ciddiyim_radyo_dinliyor_olabilirdin_kaset_caliyor_olabilirdin_plak_caliyor_olabilirdin_veya_sekiz_parcalik_teyp_de_dinliyor_olabilirdin_ama_spotify_dinliyorsun_tekrar_tesekkurler_ve_hala_tadini_cikarabilecegin_onlarca_farklı_calma_listesi_var:
+      if i.name == 'Spotify':
+        buldum=i
+       
+      else:
+        pass
+      try:
+        if buldum != None:
+          if calan['title'] != buldum.title:
+            ending = (datetime.now().minute*60) + datetime.now().second
+            try:
+              try:
+                print('l1')
+                sure = int(ending)-int(starting)
+                print(sure)
+              except Exception as e:
+                print(e)
+                pass
+              print('l3')
+              
+              with open('txts/history.txt','r') as f:
+                eski = f.read()
+              split2 = eski
+              with open('txts/history.txt','w+') as f:
+                f.write('{}\n\n{} ----> {}\n- [{}]'.format(split2,calan['title'],str(sure),calan['url']))
+                print('l4')
+            
+            except Exception as e:
+              print(e)
+              pass
+            calan['title'] = buldum.title
+            calan['url'] = buldum.track_url
+            starting = (datetime.now().minute*60) + datetime.now().second
+            print(calan['title'] + ' ' + calan['url'])
+      except:
+        calan['title'] = buldum.title
+        calan['url'] = buldum.track_url
+        pass
+    else:
+      pass
 
 keep_alive.keep_alive()
 client.run(TOKEN)
