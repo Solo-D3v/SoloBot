@@ -5,6 +5,8 @@ import qrcode
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 os.system("pip install openai")
+os.system("pip install wikipedia")
+os.system("python3 -m pip install --force-reinstall https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz")
 import openai
 from time import sleep
 import gtts
@@ -16,7 +18,7 @@ import requests
 from discord.utils import get
 import random
 from discord import FFmpegPCMAudio
-from youtube_dl import YoutubeDL
+from yt_dlp import YoutubeDL
 import urllib.parse, urllib.request, re
 import instaloader
 from roblox import Client
@@ -26,6 +28,7 @@ import io, asyncio
 import contextlib
 import typing
 from datetime import datetime
+import wikipedia
 # Intents
 intents = discord.Intents.all()
 intents.members = True
@@ -130,7 +133,7 @@ async def on_bulk_message_delete(messages):
     await client.get_channel(1041395609652969552).send(embed=embed)
 
 @client.event
-async def on_guild_role_create(after,role):
+async def on_guild_role_create(role):
   if role.guild.id == grupgrubu:
     embed = discord.Embed(title=f"Bir rol oluşturuldu!", description=f"*Rol*:**{role.mention}**", color=discord.Colour.green())
     await client.get_channel(1041395609652969552).send(embed=embed)
@@ -393,6 +396,63 @@ async def help(ctx:discord.Interaction,help: typing.Literal["mod","music","fun"]
         inline=False)
     await ctx.response.send_message(embed=embed)
 
+@tree.command(name='wikipedia', description='Search a topic on Wikipedia.')
+async def unrealwikipedia(ctx, topic: str, language: typing.Literal['Turkish','English'] = 'Turkish'):
+  try:
+    if language == 'Turkish':
+      wikipedia.set_lang("tr")
+    elif language == 'English':
+      wikipedia.set_lang("en")
+    sum = wikipedia.summary(topic, sentences=5)
+    await ctx.response.send_message(sum)
+  except wikipedia.exceptions.DisambiguationError as e:
+    await ctx.response.send_message(f"Disambiguation Error: {e}")
+  except wikipedia.exceptions.PageError as e:
+    await ctx.response.send_message(f"Page Error: {e}")
+
+@tree.command(name="voice_assistant",description="Use gpt-3.5 in a voice channel.")
+async def gpt3ses(ctx: discord.Interaction, prompt: str, language: typing.Literal["tr","en","es"] = "tr"):
+  voice = get(client.voice_clients, guild=ctx.guild)
+  try:
+    channel = ctx.user.voice.channel
+  except:
+    await ctx.response.send_message("**Lütfen önce bir ses kanalına bağlanın.**")
+    return
+  try:
+      if voice and voice.is_connected():
+        await voice.move_to(channel)
+      else:        
+        await ctx.response.send_message("Bot ses kanalınıza bağlandı.",ephemeral=True)
+      response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": "You are a helpful assistant."},{"role": "user", "content": prompt}], temperature=1.0, max_tokens=3700)
+      print(str(response["choices"][0]["message"]["content"]).strip())
+      tts = gtts.gTTS(str(response["choices"][0]["message"]["content"]).strip(),lang=language,slow=False)
+      tts.save("response.mp3")
+      await asyncio.sleep(1)
+      voice = await channel.connect()
+      voice.play(FFmpegPCMAudio(f'response.mp3'))
+      voice.is_playing()
+      await asyncio.sleep(1)
+      os.remove(f'response.mp3')
+  except Exception as e:
+      print(e)
+      return
+
+@tree.command(name='codex',description='Create codes.',guilds=client.guilds)
+async def pro(interaction: discord.Interaction, message: str):
+  await interaction.response.send_message("Waiting for response...", ephemeral = False)
+  karakter_sayisi = 0
+  response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": "You are a helpful assistant."},{"role": "user", "content": message}], temperature=1.0, max_tokens=3700)
+  for karakter in str(response["choices"][0]["message"]["content"]).strip():
+    if karakter.isalpha():
+      karakter_sayisi += 1
+  if karakter_sayisi > 1700:
+    with open("response.txt","w+") as f:
+      f.write(str(response["choices"][0]["message"]["content"]).strip())
+    print(str(response["choices"][0]["message"]["content"]).strip())
+    await interaction.edit_original_response(content="", attachments=[discord.File("response.txt")])
+  else:
+    print(str(response["choices"][0]["message"]["content"]).strip())
+    await interaction.edit_original_response(content=str(response["choices"][0]["message"]["content"]).strip())
 def checkle(react,user):
   return react.emoji == "🔫"
 @tree.command(name="standoff",description="Who is the best cowboy?")
@@ -419,19 +479,46 @@ async def standoff(ctx, player2: discord.User):
           else:
             pass
 
+'''            
+class Dovus(discord.ui.View):
+  
+  user1_health = 200
+  user2_health = 200
+  user1_blocked = False
+  user2_blocked = False
+  user1_ofke = 0
+  user2_ofke = 0
+  @discord.ui.button(label='Attack',style=discord.ButtonStyle.red)
+  async def saldir(self,ctx: discord.Interaction, button: discord.ui.Button):
+          user2_blocked = self.user2_blocked
+          user2_health = self.user2_health
+          user2_ofke = self.user2_ofke
+          user1 = ctx.user
+          if user2_blocked == False:
+            hasar = random.randint(5,19)
+          else:
+            hasar = random.randint(1,7)
+            user2_blocked = False
+          user2_health -= hasar
+          user2_ofke += 10
+          await ctx.response.edit_original_response(f'{user1.mention} used a punch attack and dealt {hasar} damage!')'''
 @tree.command(name="fight", description="A basic fight game that you can play with your friends!")
 async def fight_game(ctx, user2: discord.User):
+    #View = Dovus()
     if user2.id == client.user.id:
       await ctx.response.send_message('CHOOSE A REAL PERSON TO PLAY')
       return
     user1 = ctx.user
-    user1_health = 100
-    user2_health = 100
+    user1_health = 200
+    user2_health = 200
     user1_blocked = False
     user2_blocked = False
+    user1_ofke = 0
+    user2_ofke = 0
+    embed = discord.Embed(title="Choose your attack!",description="[1] - Punch\n[2] - Kick\n[3] - Block\n[4] - Ulti\n{}".format(user1.mention))
     await ctx.response.send_message("Kavga başlatıldı agaaa",ephemeral=True)
     while user1_health > 0 and user2_health > 0:
-        await ctx.channel.send("Choose your attack: 1. Punch 2. Kick 3. Block \n {}".format(user1.mention))
+        await ctx.channel.send(embed=embed)
         attack = await client.wait_for("message", check=lambda message: message.author.id == user1.id)
         if attack.content == "1":
           if user2_blocked == False:
@@ -440,26 +527,31 @@ async def fight_game(ctx, user2: discord.User):
             hasar = random.randint(1,7)
             user2_blocked = False
           user2_health -= hasar
-          await ctx.channel.send(f"{user1.mention} used a punch attack and dealt {hasar} damage!")
+          user2_ofke += 10
+          embed = discord.Embed(title="PUNCH",description=f"{user1.mention} used a punch attack and dealt {hasar} damage!")
+          await ctx.channel.send(embed=embed)
         elif attack.content == "2":
-            hasar = random.randint(1,100)
-            if hasar < 35:
-              xD = random.randint(10,15)
-              user1_health -= xD
-              await ctx.channel.send(f'You hurt yourself when you kicked and dealt {xD} damage.')
-            else:
-              if user2_blocked == False:
-                real = random.randint(15,25)
-              else:
-                real = random.randint(1,7)
-                user2_blocked = False
-              
-              user2_health -= real
-              await ctx.channel.send(f"{user1.mention} used a kick attack and dealt {real} damage!")
+          if user2_blocked == False:
+            real = random.randint(15,25)
+          else:
+            real = random.randint(1,7)
+            user2_blocked = False
+          user2_ofke += 20
+          user2_health -= real
+          embed = discord.Embed(title="KICK",description=f"{user1.mention} used a kick attack and dealt {real} damage!")
+          await ctx.channel.send(embed=embed)
         elif attack.content == "3":
-            await ctx.channel.send(f"{user1.mention} blocked the attack! {user1.mention} will get less damage just for one time.")
+            embed = discord.Embed(title="BLOCKED",description=f"{user1.mention} blocked the attack! {user1.mention} will get less damage just for one time.")
+            await ctx.channel.send(embed=embed)
             user1_blocked = True
-          
+        elif attack.content == "4":
+          if user1_ofke <= 50:
+            embed = discord.Embed(title="RAGE",description="You tried to use your rage but you are not ready for this.")
+            await ctx.channel.send(embed=embed)
+          else:
+            embed = discord.Embed(title="RAGE",description="You used your rage and gave him 75 DAMAGE!")
+            await ctx.channel.send(embed=embed)
+            user2_health -= 75
         else:
             await ctx.channel.send("Invalid attack choice. Please try again.")
         await ctx.channel.send(f"{user2.mention}! Your health is now at {user2_health}.")
@@ -471,30 +563,37 @@ async def fight_game(ctx, user2: discord.User):
         await ctx.channel.send("Choose your attack: 1. Punch 2. Kick 3. Block")
         attack = await client.wait_for("message", check=lambda message: message.author.id == user2.id)
         if attack.content == "1":
-          if user1_blocked == False:
+          if user2_blocked == False:
             hasar = random.randint(5,19)
           else:
-            hasar = random.randint(3,10)
-            user1_blocked = False
+            hasar = random.randint(1,7)
+            user2_blocked = False
           user1_health -= hasar
-          await ctx.channel.send(f"{user2.name} used a punch attack and dealt {hasar} damage!")
+          user1_ofke += 10
+          embed = discord.Embed(title="PUNCH",description=f"{user2.mention} used a punch attack and dealt {hasar} damage!")
+          await ctx.channel.send(embed=embed)
         elif attack.content == "2":
-            hasar = random.randint(1,100)
-            if hasar < 35:
-              xD = random.randint(10,15)
-              user2_health -= xD
-              await ctx.channel.send(f'You hurt yourself when you kicked and dealt {xD} damage.')
-            else:
-              if user1_blocked == False:
-                real = random.randint(15,25)
-              else:
-                real = random.randint(3,10)
-                user1_blocked = False
-              user1_health -= real
-              await ctx.channel.send(f"You used a kick attack and dealt {real} damage!")
+          if user1_blocked == False:
+            real = random.randint(15,25)
+          else:
+            real = random.randint(1,7)
+            user1_blocked = False
+          user1_ofke += 20
+          user1_health -= real
+          embed = discord.Embed(title="KICK",description=f"{user2.mention} used a kick attack and dealt {real} damage!")
+          await ctx.channel.send(embed=embed)
         elif attack.content == "3":
-            await ctx.channel.send(f"{user2.mention} blocked the attack! {user2.mention} will get less damage just for one time.")
+            embed = discord.Embed(title="BLOCKED",description=f"{user1.mention} blocked the attack! {user1.mention} will get less damage just for one time.")
+            await ctx.channel.send(embed=embed)
             user2_blocked = True
+        elif attack.content == "4":
+          if user2_ofke <= 50:
+            embed = discord.Embed(title="RAGE",description="You tried to use your rage but you are not ready for this.")
+            await ctx.channel.send(embed=embed)
+          else:
+            embed = discord.Embed(title="RAGE",description="You used your rage and gave him 75 DAMAGE!")
+            await ctx.channel.send(embed=embed)
+            user1_health -= 75
         else:
             await ctx.channel.send("Invalid attack choice. Please try again.")
         await ctx.channel.send(f"{user1.mention}! Your health is now at {user1_health}.")
@@ -1124,8 +1223,6 @@ async def s(ctx: discord.Interaction):
     URL = info['url']
     voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
     voice.is_playing()
-    voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
-    voice.is_playing()
     del song_queue[str(ctx.guild.id)][0]
 
 
@@ -1178,7 +1275,14 @@ async def oynat(ctx: discord.Interaction, search: str):
             'http://www.youtube.com/results?' + query_string)
         search_results = re.findall(r'/watch\?v=(.{11})',
                                     htm_content.read().decode())
-        YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
+        YDL_OPTIONS = {'format': 'bestaudio',
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'source_address': '0.0.0.0'}
         FFMPEG_OPTIONS = {
             'before_options':
             '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
@@ -1210,7 +1314,7 @@ async def oynat(ctx: discord.Interaction, search: str):
             thumb = info['thumbnails'][0]
             videofoto = thumb['url']
             sure = info['duration']
-            kanal = info['uploader']
+            kanal = info["uploader"]
             videoizlen = info['view_count']
             suremin = sure // 60
             suresec = sure % 60
@@ -1283,12 +1387,16 @@ async def kapat(ctx: discord.Interaction):
     voice = get(client.voice_clients, guild=ctx.guild)
 
     if voice.is_playing():
+      try:
         song_queue[str(ctx.guild.id)][0] = []
+      except:
+        pass
+      finally:
         voice.stop()
-        voice = await client.voice_client.disconnect()        
+        voice = await client.voice_clients[0].disconnect()        
         await ctx.response.send_message('**Kapatılıyor...**')
     else:
-        voice = await client.voice_client.disconnect()
+        voice = await client.voice_client[0].disconnect()
 
 
 # mesaj silmece
