@@ -1065,7 +1065,7 @@ async def yolla(ctx: discord.Interaction):
 @tree.command(name="ban",description="Ban a member.")
 @app_commands.describe(üye="Specify a member to ban", neden="Reason of ban.")
 @discord.app_commands.checks.has_permissions(ban_members=True)
-async def ban(ctx: discord.Interaction, üye: discord.Member, neden: str, mesajsil: int):
+async def ban(ctx: discord.Interaction, üye: discord.Member, neden: str, mesajsil: int = 0):
     if üye.id == client.user.id:
         await ctx.response.send_message(
             'Okay bro I banned myself. Wanna ban someone else now?'
@@ -1093,7 +1093,7 @@ async def ban(ctx: discord.Interaction, üye: discord.Member, neden: str, mesajs
 @app_commands.describe(üye="Member's nick and tag without any space.")
 @discord.app_commands.checks.has_permissions(ban_members=True)
 async def unban(ctx: discord.Interaction, üye: str):
-    banlılar = await ctx.guild.bans()
+    banlılar = [banli async for banli in ctx.guild.bans()]
     üye_nick, üye_tag = üye.split('#')
 
     for i in banlılar:
