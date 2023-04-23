@@ -141,3 +141,36 @@ Köprüaltı ----> 292
 
 None ----> None
 - [None]
+
+None ----> None
+- [None]
+
+Baytar ----> 110
+- [https://open.spotify.com/track/6iWvJmp3gA8DxTuN4BSECB]
+
+Susmak İçin Yok Bahanem ----> 187
+- [https://open.spotify.com/track/2oT9jTrXQYV2zoTZP65QzR]
+
+Keşke Azınlık Olsaydım ----> 239
+- [https://open.spotify.com/track/4OlblKsdv6FLuWyhB7qnwt]
+
+Bu Sen Değilsin ----> 171
+- [https://open.spotify.com/track/757O73mhxLYu9SgIUWlm37]
+
+Saydım ----> 248
+- [https://open.spotify.com/track/2ieDWKASM63qtc9JSfNPKb]
+
+Avutsun Bahaneler ----> 345
+- [https://open.spotify.com/track/14NZoXCrTaI7ClIznTYIpf]
+
+Terapi ----> 300
+- [https://open.spotify.com/track/5riLRkgzNX6B70rf1zQHp2]
+
+366.Gün ----> 211
+- [https://open.spotify.com/track/1EuFr1JA70TaEzlaSM4ulc]
+
+Toz Taneleri ----> 365
+- [https://open.spotify.com/track/36ulbeGLdspdIYSFKXIlmN]
+
+Holocaust ----> 122
+- [https://open.spotify.com/track/40Fr7DB1j6RB2DqygQI4LI]
