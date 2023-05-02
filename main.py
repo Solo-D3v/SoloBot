@@ -310,7 +310,7 @@ async def self(interaction: discord.Interaction, prompt: str):
 async def history(ctx:discord.Interaction):
   await ctx.response.send_message(file=discord.File('txts/history.txt'))
 
-@tree.command(name="imbd",description="Get some information about a movie.")
+@tree.command(name="imdb",description="Get some information about a movie.")
 async def find_movie(ctx: discord.Interaction, title: str):
     await ctx.response.defer(thinking=True)
     movies = imdb_access.search_movie(title)
@@ -350,17 +350,18 @@ async def deneme(ctx: discord.Interaction):
 
 @tree.command(name='wikipedia', description='Search a topic on Wikipedia.')
 async def unrealwikipedia(ctx, topic: str, language: typing.Literal['Turkish','English'] = 'Turkish'):
+  await ctx.response.defer()
   try:
     if language == 'Turkish':
       wikipedia.set_lang("tr")
     elif language == 'English':
       wikipedia.set_lang("en")
     sum = wikipedia.summary(topic, sentences=5)
-    await ctx.response.send_message(sum)
+    await ctx.followup.send(sum)
   except wikipedia.exceptions.DisambiguationError as e:
-    await ctx.response.send_message(f"Disambiguation Error: {e}")
+    await ctx.followup.send(f"Disambiguation Error: {e}")
   except wikipedia.exceptions.PageError as e:
-    await ctx.response.send_message(f"Page Error: {e}")
+    await ctx.followup.send(f"Page Error: {e}")
 
 @tree.command(name="chessuser",description="Get some information about a chess.com account.")
 async def chesscom(ctx: discord.Interaction, account_name: str):
@@ -408,36 +409,14 @@ async def standoff(ctx, player2: discord.User):
             
           else:
             pass
-
-'''            
-class Dovus(discord.ui.View):
-  
-  user1_health = 200
-  user2_health = 200
-  user1_blocked = False
-  user2_blocked = False
-  user1_ofke = 0
-  user2_ofke = 0
-  @discord.ui.button(label='Attack',style=discord.ButtonStyle.red)
-  async def saldir(self,ctx: discord.Interaction, button: discord.ui.Button):
-          user2_blocked = self.user2_blocked
-          user2_health = self.user2_health
-          user2_ofke = self.user2_ofke
-          user1 = ctx.user
-          if user2_blocked == False:
-            hasar = random.randint(5,19)
-          else:
-            hasar = random.randint(1,7)
-            user2_blocked = False
-          user2_health -= hasar
-          user2_ofke += 10
-          await ctx.response.edit_original_response(f'{user1.mention} used a punch attack and dealt {hasar} damage!')'''
+"""
 @tree.command(name="fight", description="A basic fight game that you can play with your friends!")
 async def fight_game(ctx, user2: discord.User):
     #View = Dovus()
     if user2.id == client.user.id:
       await ctx.response.send_message('CHOOSE A REAL PERSON TO PLAY')
       return
+    turn = 1
     user1 = ctx.user
     user1_health = 200
     user2_health = 200
@@ -450,40 +429,85 @@ async def fight_game(ctx, user2: discord.User):
     await ctx.response.send_message("Kavga başlatıldı agaaa",ephemeral=True)
     
     while user1_health > 0 and user2_health > 0:
-        embed = discord.Embed(title="Choose your attack!",description="[1] - Punch\n[2] - Kick\n[3] - Block\n[4] - Ulti\n{}".format(user1.mention))
+        embed = discord.Embed(title="Choose your attack!",description="[1] - **Punch**\n[2] - **Kick**\n[3] - **Block**\n[4] - **Rage**\n{}".format(user1.mention))
         embed.set_footer(text=f"{user2.name}! Your health is now at {user2_health}.")
         await ctx.channel.send(embed=embed)
+        punch_button = discord.ui.Button(label="Punch", style=discord.ButtonStyle.red)
+      
+        kick_button = discord.ui.Button(label="Kick", style=discord.ButtonStyle.green)
+      
+        block_button = discord.ui.Button(label="Block", style=discord.ButtonStyle.blurple)
+      
+        rage_button = discord.ui.Button(label="Rage")
+
+        async def punch(interaction: discord.Interaction):
+          if turn == 1 and ctx.user.id == interaction.user.id:
+            if user2_blocked == False:
+              hasar = random.randint(5,19)
+            else:
+              hasar = random.randint(1,7)
+              user2_blocked = False
+            user2_health -= hasar
+            user2_ofke += 10
+            embed = discord.Embed(title="PUNCH",description=f"**{user1.mention} used a punch attack and dealt {hasar} damage!**")
+            embed.set_footer(text=f"{user2.name}! Your health is now at {user2_health}.")
+            await ctx.edit_original_response(embed=embed)
+            turn = 2
+          elif turn == 2 and user2.id == interaction.user.id:
+            if user1_blocked == False:
+              hasar = random.randint(5,19)
+            else:
+              hasar = random.randint(1,7)
+              user1_blocked = False
+            user1_health -= hasar
+            user1_ofke += 10
+            embed = discord.Embed(title="PUNCH",description=f"**{user2.mention} used a punch attack and dealt {hasar} damage!**")
+            embed.set_footer(text=f"{user1.name}! Your health is now at {user1_health}.")
+            await ctx.edit_original_response(embed=embed)
+            turn = 1
+          else:
+            await interaction.response.send_message("It's not your turn.", ephemeral=True)
+        async def kick(interaction: discord.Interaction):
+          if turn == 1 and ctx.user.id == interaction.user.id:
+            if user2_blocked == False:
+              real = random.randint(15,25)
+            else:
+              real = random.randint(1,7)
+              user2_blocked = False
+            user2_ofke += 20
+            user2_health -= real
+            embed = discord.Embed(title="KICK",description=f"**{user1.mention} used a kick attack and dealt {real} damage!**")
+            embed.set_footer(text=f"{user2.name}! Your health is now at {user2_health}.")
+            await ctx.edit_original_response(embed=embed)
+            turn = 2
+          elif turn == 2 and user2.id == interaction.user.id:
+            if user1_blocked == False:
+              real = random.randint(15,25)
+            else:
+              real = random.randint(1,7)
+              user1_blocked = False
+            user1_ofke += 20
+            user1_health -= real
+            embed = discord.Embed(title="KICK",description=f"**{user2.mention} used a kick attack and dealt {real} damage!**")
+            embed.set_footer(text=f"{user1.name}! Your health is now at {user1_health}.")
+            await ctx.edit_original_response(embed=embed)
+            turn = 1
+          
+          else:
+            await interaction.response.send_message("It's not your turn.", ephemeral=True)
+
+        async def block(ctx: discord.Interaction):
+          
         attack = await client.wait_for("message", check=lambda message: message.author.id == user1.id)
-        if attack.content == "1":
-          if user2_blocked == False:
-            hasar = random.randint(5,19)
-          else:
-            hasar = random.randint(1,7)
-            user2_blocked = False
-          user2_health -= hasar
-          user2_ofke += 10
-          embed = discord.Embed(title="PUNCH",description=f"{user1.mention} used a punch attack and dealt {hasar} damage!")
-          embed.set_footer(text=f"{user2.name}! Your health is now at {user2_health}.")
-          await ctx.channel.send(embed=embed)
-        elif attack.content == "2":
-          if user2_blocked == False:
-            real = random.randint(15,25)
-          else:
-            real = random.randint(1,7)
-            user2_blocked = False
-          user2_ofke += 20
-          user2_health -= real
-          embed = discord.Embed(title="KICK",description=f"{user1.mention} used a kick attack and dealt {real} damage!")
-          embed.set_footer(text=f"{user2.name}! Your health is now at {user2_health}.")
-          await ctx.channel.send(embed=embed)
+
         elif attack.content == "3":
-            embed = discord.Embed(title="BLOCKED",description=f"{user1.mention} blocked the attack! {user1.mention} will get less damage just for one time.")
+            embed = discord.Embed(title="BLOCKED",description=f"**{user1.mention} blocked the attack! {user1.mention} will get less damage just for one time.**")
             embed.set_footer(text=f"{user2.name}! Your health is now at {user2_health}.")
             await ctx.channel.send(embed=embed)
             user1_blocked = True
         elif attack.content == "4":
           if user1_ofke <= 50:
-            embed = discord.Embed(title="RAGE",description="You tried to use your rage but you are not ready for this.")
+            embed = discord.Embed(title="RAGE",description="**You tried to use your rage but you are not ready for this.**")
             embed.set_footer(text=f"{user2.name}! Your health is now at {user2_health}.")
             await ctx.channel.send(embed=embed)
           else:
@@ -496,55 +520,32 @@ async def fight_game(ctx, user2: discord.User):
             await ctx.channel.send("Invalid attack choice. Please try again.")
         
         if user2_health <= 0:
-            await ctx.channel.send(f"{user1.mention} won the game!")
+            await ctx.channel.send(f"**{user1.mention} won the game!**")
             return
-        embed = discord.Embed(title="Choose your attack!",description="[1] - Punch\n[2] - Kick\n[3] - Block\n[4] - Ulti\n{}".format(user2.mention))
+        embed = discord.Embed(title="Choose your attack!",description="[1] - **Punch**\n[2] - **Kick**\n[3] - **Block**\n[4] - **Ulti**\n{}".format(user2.mention))
         embed.set_footer(text=f"{user1.name}! Your health is now at {user1_health}.")
-        await ctx.channel.send(embed=embed)
-        attack = await client.wait_for("message", check=lambda message: message.author.id == user2.id)
-        if attack.content == "1":
-          if user1_blocked == False:
-            hasar = random.randint(5,19)
-          else:
-            hasar = random.randint(1,7)
-            user1_blocked = False
-          user1_health -= hasar
-          user1_ofke += 10
-          embed = discord.Embed(title="PUNCH",description=f"{user2.mention} used a punch attack and dealt {hasar} damage!")
-          embed.set_footer(text=f"{user1.name}! Your health is now at {user1_health}.")
-          await ctx.channel.send(embed=embed)
-        elif attack.content == "2":
-          if user1_blocked == False:
-            real = random.randint(15,25)
-          else:
-            real = random.randint(1,7)
-            user1_blocked = False
-          user1_ofke += 20
-          user1_health -= real
-          embed = discord.Embed(title="KICK",description=f"{user2.mention} used a kick attack and dealt {real} damage!")
-          embed.set_footer(text=f"{user1.name}! Your health is now at {user1_health}.")
-          await ctx.channel.send(embed=embed)
+
         elif attack.content == "3":
-            embed = discord.Embed(title="BLOCKED",description=f"{user1.mention} blocked the attack! {user1.mention} will get less damage just for one time.")
+            embed = discord.Embed(title="BLOCKED",description=f"**{user1.mention} blocked the attack! {user1.mention} will get less damage just for one time.**")
             embed.set_footer(text=f"{user1.name}! Your health is now at {user1_health}.")
             await ctx.channel.send(embed=embed)
             user2_blocked = True
         elif attack.content == "4":
           if user2_ofke <= 50:
-            embed = discord.Embed(title="RAGE",description="You tried to use your rage but you are not ready for this.")
+            embed = discord.Embed(title="RAGE",description="**You tried to use your rage but you are not ready for this.**")
             embed.set_footer(text=f"{user1.name}! Your health is now at {user1_health}.")
             await ctx.channel.send(embed=embed)
           else:
             user1_health -= 75
-            embed = discord.Embed(title="RAGE",description="You used your rage and gave him 75 DAMAGE!")
+            embed = discord.Embed(title="RAGE",description="**You used your rage and gave him 75 DAMAGE!**")
             embed.set_footer(text=f"{user1.name}! Your health is now at {user1_health}.")
             await ctx.channel.send(embed=embed)            
         else:
             await ctx.channel.send("Invalid attack choice. Please try again.")
         if user1_health <= 0:
-            await ctx.channel.send(f"{user2.mention} won the game!")
+            await ctx.channel.send(f"**{user2.mention} won the game!**")
             return
-
+"""
 
 @tree.command(name="botinfo",description="Information about bot.")
 async def botinfo(ctx: discord.Interaction):
@@ -573,15 +574,15 @@ async def userinfo(ctx: discord.Interaction, kisi: discord.User):
     print(e)
 
 @tree.command(name="qr",description="Create a qr code.")
-@app_commands.describe(arg="What should write in qr code?")
-async def qr(ctx,arg: str):
+@app_commands.describe(text="What should bot write in qr code?")
+async def qr(ctx, text: str):
   qr = qrcode.QRCode(
     version = 1,
     error_correction = qrcode.constants.ERROR_CORRECT_L,
     box_size = 100,
     border = 4
   )
-  qr.add_data(f'{arg}')
+  qr.add_data(f'{text}')
   qr.make(fit=True)
 
   kod = qr.make_image(fill_color=(0,0,0),back_color='white')
@@ -631,7 +632,7 @@ async def id(ctx: discord.Interaction,emoji: str):
       pass
 
 @tree.command(name="mesajyaz",description="Write a fake message like someone else.")
-@app_commands.describe(kişi="Specify a member.")
+@app_commands.describe(kişi="Specify a member.", mesaj="The message content.")
 async def mesajyaz(ctx:discord.Interaction, kişi: discord.Member, mesaj: str):
     try:
         await ctx.response.send_message("Done!",ephemeral=True)
@@ -669,6 +670,7 @@ async def eval(ctx:discord.Interaction, code: str):
 
 
 @tree.command(name="roblox",description="Search some information about a roblox player")
+@app_commands.describe(kisi="The player's nickname.")
 async def rb(ctx: discord.Interaction, kisi: str):
     try:
         user = await robux.get_user_by_username(username=kisi)
@@ -1343,17 +1345,32 @@ async def kapat(ctx: discord.Interaction):
         voice = await client.voice_client[0].disconnect()
 
 
+
 # mesaj silmece
 @tree.command(name="sil",description="Purge the messages.")
-@commands.cooldown(1, 30, commands.BucketType.user)
+@app_commands.checks.cooldown(1, 30)
+@app_commands.describe(amount="Miktar.")
 @discord.app_commands.checks.has_permissions(manage_messages=True)
-async def sil(ctx: discord.Interaction, amount: int = 15):
-    await ctx.channel.purge(limit=amount)
-    await ctx.response.send_message("**Mesajlar silindi!**",ephemeral=True)
+async def sil(ctx: discord.Interaction, amount: int = 15, reason: str = "Belirtilmemiş."):
+    await ctx.response.defer()
+    ney = await ctx.followup.send("**{} adet mesaj siliniyor...**".format(amount),ephemeral=False)
+    # mesaj silmece check
+    def silcheck(mesaj):
+      return mesaj != ney
+    await ctx.channel.purge(limit=amount+1,reason=reason, check=silcheck)
+    await ney.delete(delay=3)
+
+@sil.error
+async def sil_error(ctx: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        saniye = float(str(error).split("Try again in ")[1].split("s")[0])
+        await ctx.response.send_message(str(error), ephemeral=False, delete_after=saniye)
+    
 
 
 @tree.command(name="yt",description="Search a video on Youtube")
-async def yt(ctx: discord.Interaction,search: str):
+@app_commands.rename(search="search_query")
+async def yt(ctx: discord.Interaction, search: str):
 
     query_string = urllib.parse.urlencode({'search_query': search})
     htm_content = urllib.request.urlopen('http://www.youtube.com/results?' +
