@@ -23,7 +23,13 @@ try:
 except ImportError:
   os.system("pip install wikipedia")
   import wikipedia
-  
+
+try:
+  from PIL import Image
+except ImportError:
+  os.system('pip install pillow')
+  from PIL import Image
+
 try:
   from yt_dlp import YoutubeDL
 except ImportError:
@@ -50,7 +56,7 @@ import io, asyncio
 import contextlib
 import typing
 from datetime import datetime
-
+from datetime import timedelta
 # Intents
 intents = discord.Intents.all()
 intents.members = True
@@ -331,6 +337,63 @@ async def find_movie(ctx: discord.Interaction, title: str):
 
     await ctx.followup.send(response)
 
+@tree.context_menu(name="Message ID")
+async def react(interaction: discord.Interaction, message: discord.Message):
+    await interaction.response.send_message(message.id, ephemeral=False)
+
+@tree.command(name="automod_create", description="Create a automod rule.")  # AutoMod komutunu oluşturup ona bir isim ve bir açıklama veriyorum.
+@app_commands.describe(name="The name of the automod rule.", event_type="The type of event that the automod rule will trigger on.",trigger="The triggers that will trigger the automod rule.",actions= "The actions that will be taken when the automod rule is triggered.", enabled="Whether the automod rule is enabled. Discord will default to False.",reason="The reason for creating this automod rule. Shows up on the audit log.",channel_id="The ID of the channel or thread to send the alert message to, if any. Passing this sets type to send_alert_message.",custom_message="A custom message which will be shown to a user when their message is blocked. Passing this sets type to block_message.",duration="Needed if timeout is selected. Default is 1 minute.")  # Optionsların açıklamalarını burada belirtiyorum.
+@app_commands.checks.has_permissions(manage_guild=True) # Sadece sunucuyu yönet yetkisine sahip kişiler kullanın diye yaptım.
+async def automodpro(ctx:discord.Interaction, name: str, event_type: typing.Literal["message_send"], trigger:str, actions: typing.Literal["block_message","send_alert_message","timeout","block_message&send_alert_message","all_of_them"], enabled: typing.Literal["True","False"] = None, reason: str = None, channel_id:str = None, custom_message: str = None,duration: int = 1): 
+  if enabled == None: # enabled optionunun defaultunu direk False yapmama discord izin vermediği için bu şekilde False yaptım.
+    enabled = False
+
+  
+  if actions == "block_message":  # Block Message kısmı
+    action = discord.AutoModRuleAction(channel_id=int(channel_id), duration=None, custom_message=custom_message)
+    action.type = discord.AutoModRuleActionType.block_message
+    await ctx.guild.create_automod_rule(name=name, event_type=discord.AutoModRuleEventType.message_send, trigger=discord.AutoModTrigger( keyword_filter=[i for i in trigger.split(",")]), actions=[action], enabled=enabled, reason=reason)
+
+  if actions == "send_alert_message": # Send Alert Message kısmı
+    action = discord.AutoModRuleAction(channel_id=int(channel_id), duration=None, custom_message=custom_message)
+    action.type = discord.AutoModRuleActionType.send_alert_message
+    await ctx.guild.create_automod_rule(name=name, event_type=discord.AutoModRuleEventType.message_send, trigger=discord.AutoModTrigger( keyword_filter=[i for i in trigger.split(",")]), actions=[action], enabled=enabled, reason=reason)
+
+
+  if actions == "timeout": # timeout cart curt
+    action = discord.AutoModRuleAction(channel_id=int(channel_id), duration=timedelta(minutes = int(duration)), custom_message=custom_message)
+    action.type = discord.AutoModRuleActionType.timeout
+    await ctx.guild.create_automod_rule(name=name, event_type=discord.AutoModRuleEventType.message_send, trigger=discord.AutoModTrigger( keyword_filter=[i for i in trigger.split(",")]), actions=[action], enabled=enabled, reason=reason)
+
+  if actions == "block_message&send_alert_message": # ikisi birden
+    action = [discord.AutoModRuleAction(channel_id=int(channel_id), duration=None, custom_message=custom_message), discord.AutoModRuleAction(channel_id=int(channel_id), duration=None, custom_message=custom_message)]
+    action[0].type = discord.AutoModRuleActionType.block_message
+    action[1].type = discord.AutoModRuleActionType.send_alert_message
+    await ctx.guild.create_automod_rule(name=name, event_type=discord.AutoModRuleEventType.message_send, trigger=discord.AutoModTrigger( keyword_filter=[i for i in trigger.split(",")]), actions=action, enabled=enabled, reason=reason)
+
+  if actions == "all_of_them": # hepsi
+    action = [discord.AutoModRuleAction(channel_id=int(channel_id), duration=None, custom_message=custom_message), discord.AutoModRuleAction(channel_id=int(channel_id), duration=None, custom_message=custom_message),discord.AutoModRuleAction(channel_id=int(channel_id), duration=timedelta(minutes = int(duration)))]
+    action[0].type = discord.AutoModRuleActionType.block_message
+    action[1].type = discord.AutoModRuleActionType.send_alert_message
+    action[2].type = discord.AutoModRuleActionType.timeout
+    await ctx.guild.create_automod_rule(name=name, event_type=discord.AutoModRuleEventType.message_send, trigger=discord.AutoModTrigger( keyword_filter=[i for i in trigger.split(",")]), actions=action, enabled=enabled, reason=reason)
+  
+  
+  triggers = "".join(f"{i} " for i in trigger.split(",")) # Bilgi mesajı atarken triggersları bir arada belirtmek için böyle yaptım.
+  
+  if reason: # reason default falan
+    pass
+  else:
+    reason = "No reason given."
+      
+  if custom_message: # custom message default falan
+    pass
+  else:
+    custom_message = "No custom message given."
+      
+  await ctx.response.send_message(f"# AutoMod Rule\n\n{ctx.user.mention} created a AutoMod rule. Here is the details:\n\n> - Rule Name: {name}\n> - Event Type: {event_type}\n> - Triggers: {triggers}\n> - Actions: {actions}\n> - Enabled: {enabled}\n> - Reason: {reason}\n> - Custom Message: {custom_message}")
+  
+
 @tree.command(name="deneme",description="Just for fun")
 async def deneme(ctx: discord.Interaction):
   select = discord.ui.Select(options = [
@@ -367,6 +430,16 @@ async def unrealwikipedia(ctx, topic: str, language: typing.Literal['Turkish','E
 async def chesscom(ctx: discord.Interaction, account_name: str):
   r = requests.get(f'https://www.chess.com/member/{account_name}')
   await ctx.response.send_message(f'Bu komut henüz tamamlanmadı.\n\n{r.status_code}')
+
+@tree.command(name="fact",description="Shows a random useless fact")
+async def fact(ctx):
+    await ctx.response.defer(thinking=False)
+    response = requests.get('https://uselessfacts.jsph.pl/random.json?language=en')
+    if response.status_code == 200:
+        fact = response.json()['text']
+        await ctx.followup.send(f'**Useless Fact:** {fact}')
+    else:
+        await ctx.followup.send('Unable to fetch facts :(')
 
 @tree.command(name='codex',description='Create codes.',guilds=client.guilds)
 async def pro(interaction: discord.Interaction, message: str):

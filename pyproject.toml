@@ -18,7 +18,12 @@ roblox = "^2.0.0"
 qrcode = "^7.3.1"
 spotipy = "^2.20.0"
 openai = "^0.27.2"
+yt-dlp = "^2023.3.4"
+IMDbPY = "^2022.7.9"
+Pillow = "^9.5.0"
+wikipedia = "^1.4.0"
 [tool.poetry.dev-dependencies]
+replit-python-lsp-server = {version = "^1.5.9", extras = ["yapf", "rope", "pyflakes"]}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
