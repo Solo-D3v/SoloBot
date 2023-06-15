@@ -45,7 +45,7 @@ from discord import app_commands
 import requests
 from discord.utils import get
 import random
-from discord import FFmpegPCMAudio
+from discord import FFmpegOpusAudio
 
 import urllib.parse, urllib.request, re
 import instaloader
@@ -70,11 +70,20 @@ class aclient(discord.Client):
 
   async def on_ready(self):
     await self.wait_until_ready()
+    with open("jsons/song_queue.json") as f:
+      icerik = f.read()
+    icerik_dict = json.loads(icerik)
+
+    for guild in client.guilds:
+      icerik_dict[str(guild.id)] = []
+    with open("jsons/song_queue.json", "w") as f:
+      f.write(json.dumps(icerik_dict))
+        
     print('Bota bağlanıldı: {}'.format(client.user.name))
 
     print('Bot ID: {}'.format(client.user.id))
 
-    activity = discord.Game(name="/yardım | /help", type=3)
+    activity = discord.Game(name="/play | /standoff", type=3)
     await client.change_presence(status=discord.Status.idle, activity=activity)
     print("Durum ayarlandı!")
     spotimer.start()
@@ -120,10 +129,10 @@ async def on_member_join(member):
     if member.guild.id == 1015344885433372732:
         channel = client.get_channel(1015526727767838811)
         await channel.send(
-            f"**<@{member.id}> adlı kullanıcı sunucuya katıldı** :tada:")
+            f"**<@{member.id}> joined the server.** :tada:")
         await member.create_dm()
         await member.dm_channel.send(
-            f"**Merhaba! Sunucumuza hoşgeldin! <@{member.id}>**")
+            f"**HAII! WELCOME TO OUR SERVER!!! <@{member.id}>**")
     else:
         return
 
@@ -132,7 +141,7 @@ async def on_member_join(member):
 async def on_member_remove(member):
     if member.guild.id == 1015344885433372732:
         channel = client.get_channel(1015526727767838811)
-        await channel.send(f"**{member.name} adlı kullanıcı sunucudan ayrıldı** :sob:")
+        await channel.send(f"**{member.name} left the server.** :sob:")
     else:
         return
 
@@ -140,7 +149,7 @@ async def on_member_remove(member):
 async def on_member_ban(guild, member):
   if guild.id == grupgrubu:
     entries = [entry async for entry in guild.audit_logs(action=discord.AuditLogAction.ban, limit=1)]
-    embed = discord.Embed(title=f"Bir üye banlandı!", description=f"*Banlanan*: **{member.name}**\n*Banlayan*:**{entries[0].user.name}**\n*Neden*:**{entries[0].reason}**", color=discord.Colour.red())
+    embed = discord.Embed(title=f"A member has been banned!", description=f"*Banned Member*: **{member.name}**\n*Moderator who banned*:**{entries[0].user.name}**\n*Reason*:**{entries[0].reason}**", color=discord.Colour.red())
     
     await client.get_channel(1041395609652969552).send(embed=embed)
   else:
@@ -150,7 +159,7 @@ async def on_member_ban(guild, member):
 async def on_member_kick(guild, member):
   if guild.id == grupgrubu:
     entries = [entry async for entry in guild.audit_logs(action=discord.AuditLogAction.kick, limit=1)]
-    embed = discord.Embed(title=f"Bir üye atıldı!", description=f"Bir üye atıldı.!\n*Atılan*: **{member.name}**\n*Atan*:**{entries[0].user.name}\n*Neden*:**{entries[0].reason}", color=discord.Colour.red())
+    embed = discord.Embed(title=f"A member has been kicked!", description=f"*Kicked Member*: **{member.name}**\n*Moderator who kicked*:**{entries[0].user.name}\n*Reason*:**{entries[0].reason}", color=discord.Colour.red())
     await client.get_channel(1041395609652969552).send(embed=embed)
   else:
     pass
@@ -158,71 +167,71 @@ async def on_member_kick(guild, member):
 @client.event
 async def on_bulk_message_delete(messages):
   if messages[0].guild.id == grupgrubu:
-    embed = discord.Embed(title=f"Toplu mesaj silimi yapıldı!", description=f"*Silinen mesaj sayısı*:**{len(messages)}**\n*Kanal*:{messages[0].channel.mention}", color=discord.Colour.light_gray())
+    embed = discord.Embed(title=f"Bulk delete detected!", description=f"*Number of deleted messages*:**{len(messages)}**\n*Channel*:{messages[0].channel.mention}", color=discord.Colour.light_gray())
     await client.get_channel(1041395609652969552).send(embed=embed)
 
 @client.event
 async def on_guild_role_create(role):
   if role.guild.id == grupgrubu:
-    embed = discord.Embed(title=f"Bir rol oluşturuldu!", description=f"*Rol*:**{role.mention}**", color=discord.Colour.green())
+    embed = discord.Embed(title=f"A role created!", description=f"*Role*:**{role.mention}**", color=discord.Colour.green())
     await client.get_channel(1041395609652969552).send(embed=embed)
 
 @client.event
 async def on_guild_role_delete(after,role):
   if role.guild.id == grupgrubu:
-    embed = discord.Embed(title=f"Bir rol silindi!", description=f"*Rol*:**{role.name}**", color=discord.Colour.red())
+    embed = discord.Embed(title=f"A role deleted!", description=f"*Role*:**{role.name}**", color=discord.Colour.red())
     await client.get_channel(1041395609652969552).send(embed=embed)
 
 @client.event
 async def on_guild_role_update(after, role):
   if role.guild.id == grupgrubu:
     entries = [entry async for entry in after.guild.audit_logs(action=discord.AuditLogAction.role_update, limit=1)]
-    embed = discord.Embed(title=f"Bir rol güncellendi!", description=f"*Rol*:**{role.mention}**\n*Güncelleyen*:**{entries[0].user.name}", color=discord.Colour.blue())
-    embed.add_field(name="Değişiklikler",value=entries[0].changes.after)
+    embed = discord.Embed(title=f"A role updated!", description=f"*Role*:**{role.mention}**\n*Moderator who updated*:**{entries[0].user.name}", color=discord.Colour.blue())
+    embed.add_field(name="Changes",value=entries[0].changes.after)
     await client.get_channel(1041395609652969552).send(embed=embed)    
 
 @client.event
 async def on_thread_create(thread):
   if thread.guild.id == grupgrubu:
     entries = [entry async for entry in thread.guild.audit_logs(action=discord.AuditLogAction.thread_create, limit=1)]
-    embed = discord.Embed(title=f"Bir alt başlık oluşturuldu!", description=f"*Alt başlık*:**{thread.mention}**\n*Oluşturan*:**{entries[0].user.name}**", color=discord.Colour.green())
+    embed = discord.Embed(title=f"A thread has been created!", description=f"*Thread*:**{thread.mention}**\n*Moderator who created*:**{entries[0].user.name}**", color=discord.Colour.green())
     await client.get_channel(1041395609652969552).send(embed=embed)
 
 @client.event
 async def on_thread_update(fart,thread):
   if thread.guild.id == grupgrubu:   
     entries = [entry async for entry in thread.guild.audit_logs(action=discord.AuditLogAction.thread_update, limit=1)]
-    embed = discord.Embed(title=f"Bir alt başlık güncellendi!", description=f"*Alt başlık*:**{thread.mention}**\n*Güncelleyen*:**{entries[0].user.name}**", color=discord.Colour.blue())
-    embed.add_field(name="Değişiklikler",value=entries[0].changes.after)
+    embed = discord.Embed(title=f"A thread has been updated!", description=f"*Thread*:**{thread.mention}**\n*Moderator who updated*:**{entries[0].user.name}**", color=discord.Colour.blue())
+    embed.add_field(name="Changes",value=entries[0].changes.after)
     await client.get_channel(1041395609652969552).send(embed=embed)
 
 @client.event
 async def on_thread_remove(thread):
   if thread.guild.id == grupgrubu:
     entries = [entry async for entry in thread.guild.audit_logs(action=discord.AuditLogAction.thread_remove, limit=1)]
-    embed = discord.Embed(title=f"Bir alt başlık silindi!", description=f"*Alt başlık*:**{thread.name}**\n*Silen*:**{entries[0].user.name}**", color=discord.Colour.red())
+    embed = discord.Embed(title=f"A thread has been deleted!", description=f"*Thread*:**{thread.name}**\n*Moderator who deleted*:**{entries[0].user.name}**", color=discord.Colour.red())
     await client.get_channel(1041395609652969552).send(embed=embed)
 
 @client.event
 async def on_guild_channel_create(channel):
   if channel.guild.id == grupgrubu:
     entries = [entry async for entry in channel.guild.audit_logs(action=discord.AuditLogAction.channel_create, limit=1)]
-    embed = discord.Embed(title=f"Bir kanal oluşturuldu!", description=f"*Kanal*:**{channel.mention}**\n*Oluşturan*:**{entries[0].user.name}**", color=discord.Colour.green())
+    embed = discord.Embed(title=f"A channel has been created!", description=f"*Channel*:**{channel.mention}**\n*Moderator who created*:**{entries[0].user.name}**", color=discord.Colour.green())
     await client.get_channel(1041395609652969552).send(embed=embed)
 
 @client.event
 async def on_guild_channel_update(before,after):
   if after.guild.id == grupgrubu:   
     entries = [entry async for entry in after.guild.audit_logs(action=discord.AuditLogAction.channel_update, limit=1)]
-    embed = discord.Embed(title=f"Bir kanal güncellendi!", description=f"*Kanal*:**{after.mention}**\n*Güncelleyen*:**{entries[0].user.name}**", color=discord.Colour.blue())
-    embed.add_field(name="Değişiklikler",value=entries[0].changes.after)
+    embed = discord.Embed(title=f"A channel has been updated!", description=f"*Channel*:**{after.mention}**\n*Moderator who updated*:**{entries[0].user.name}**", color=discord.Colour.blue())
+    embed.add_field(name="Changes",value=entries[0].changes.after)
     await client.get_channel(1041395609652969552).send(embed=embed)
 
 @client.event
 async def on_guild_channel_delete(channel):
   if channel.guild.id == grupgrubu:
     entries = [entry async for entry in channel.guild.audit_logs(action=discord.AuditLogAction.channel_delete, limit=1)]
-    embed = discord.Embed(title=f"Bir kanal silindi!", description=f"*Kanal*:**{channel.name}**\n*Silen*:**{entries[0].user.name}**", color=discord.Colour.red())
+    embed = discord.Embed(title=f"A channel has been deleted!", description=f"*Channel*:**{channel.name}**\n*Moderator who deleted*:**{entries[0].user.name}**", color=discord.Colour.red())
     await client.get_channel(1041395609652969552).send(embed=embed)
 
 @client.event
@@ -258,7 +267,7 @@ async def on_message_delete(message):
       except Exception as e:
         print(e)
       print('Ok!')
-    embed = discord.Embed(title=f"Bir mesaj silindi!", description=f"*Gönderen*: **{message.author.name}**\n*Mesaj içeriği*:  **{message.content}**", color=discord.Colour.red())
+    embed = discord.Embed(title=f"A message has been deleted!", description=f"*Sender*: **{message.author.name}**\n*Message Content*:  **{message.content}**", color=discord.Colour.red())
     await client.get_channel(1041395609652969552).send(embed=embed)
 
 @client.event
@@ -322,24 +331,24 @@ async def find_movie(ctx: discord.Interaction, title: str):
     movies = imdb_access.search_movie(title)
 
     if not movies:
-        await ctx.followup.send(f"`{title}` için sonuç bulunamadı!")
+        await ctx.followup.send(f"No information found about `{title}`!")
         return
 
     movie = imdb_access.get_movie(movies[0].getID())
     print(movie)
     response = (
         f"**{movie['title']}** ({movie['year']})\n"
-        f"**Tür:** {', '.join(str(genre) for genre in movie['genres'])}\n"
-        f"**Süre:** {movie['runtime'][0]} dk\n"
-        f"**Puan:** {movie['rating']:.1f} / 10\n"
-        f"**Açıklama:** {movie.get('plot outline', 'Açıklama bulunamadı')}"
+        f"**Genre:** {', '.join(str(genre) for genre in movie['genres'])}\n"
+        f"**Runtime:** {movie['runtime'][0]} dk\n"
+        f"**Rating:** {movie['rating']:.1f} / 10\n"
+        f"**Description:** {movie.get('plot outline', 'Açıklama bulunamadı')}"
     )
 
     await ctx.followup.send(response)
 
-@tree.context_menu(name="Message ID")
+@tree.context_menu(name="Get Avatar")
 async def react(interaction: discord.Interaction, message: discord.Message):
-    await interaction.response.send_message(message.id, ephemeral=False)
+    await interaction.response.send_message(message.author.avatar.url, ephemeral=False)
 
 @tree.command(name="automod_create", description="Create a automod rule.")  # AutoMod komutunu oluşturup ona bir isim ve bir açıklama veriyorum.
 @app_commands.describe(name="The name of the automod rule.", event_type="The type of event that the automod rule will trigger on.",trigger="The triggers that will trigger the automod rule.",actions= "The actions that will be taken when the automod rule is triggered.", enabled="Whether the automod rule is enabled. Discord will default to False.",reason="The reason for creating this automod rule. Shows up on the audit log.",channel_id="The ID of the channel or thread to send the alert message to, if any. Passing this sets type to send_alert_message.",custom_message="A custom message which will be shown to a user when their message is blocked. Passing this sets type to block_message.",duration="Needed if timeout is selected. Default is 1 minute.")  # Optionsların açıklamalarını burada belirtiyorum.
@@ -372,7 +381,13 @@ async def automodpro(ctx:discord.Interaction, name: str, event_type: typing.Lite
     await ctx.guild.create_automod_rule(name=name, event_type=discord.AutoModRuleEventType.message_send, trigger=discord.AutoModTrigger( keyword_filter=[i for i in trigger.split(",")]), actions=action, enabled=enabled, reason=reason)
 
   if actions == "all_of_them": # hepsi
-    action = [discord.AutoModRuleAction(channel_id=int(channel_id), duration=None, custom_message=custom_message), discord.AutoModRuleAction(channel_id=int(channel_id), duration=None, custom_message=custom_message),discord.AutoModRuleAction(channel_id=int(channel_id), duration=timedelta(minutes = int(duration)))]
+    
+    action = [
+      discord.AutoModRuleAction(channel_id=int(channel_id), duration=None, custom_message=custom_message),
+      discord.AutoModRuleAction(channel_id=int(channel_id), duration=None, custom_message=custom_message),
+      discord.AutoModRuleAction(duration=timedelta(minutes = int(duration)))
+    ]
+    
     action[0].type = discord.AutoModRuleActionType.block_message
     action[1].type = discord.AutoModRuleActionType.send_alert_message
     action[2].type = discord.AutoModRuleActionType.timeout
@@ -412,7 +427,8 @@ async def deneme(ctx: discord.Interaction):
   await ctx.response.send_message("Birini seç!",view=view)
 
 @tree.command(name='wikipedia', description='Search a topic on Wikipedia.')
-async def unrealwikipedia(ctx, topic: str, language: typing.Literal['Turkish','English'] = 'Turkish'):
+@app_commands.describe(language="Default is English.")
+async def unrealwikipedia(ctx, topic: str, language: typing.Literal['Turkish','English'] = 'English'):
   await ctx.response.defer()
   try:
     if language == 'Turkish':
@@ -425,11 +441,7 @@ async def unrealwikipedia(ctx, topic: str, language: typing.Literal['Turkish','E
     await ctx.followup.send(f"Disambiguation Error: {e}")
   except wikipedia.exceptions.PageError as e:
     await ctx.followup.send(f"Page Error: {e}")
-
-@tree.command(name="chessuser",description="Get some information about a chess.com account.")
-async def chesscom(ctx: discord.Interaction, account_name: str):
-  r = requests.get(f'https://www.chess.com/member/{account_name}')
-  await ctx.response.send_message(f'Bu komut henüz tamamlanmadı.\n\n{r.status_code}')
+  
 
 @tree.command(name="fact",description="Shows a random useless fact")
 async def fact(ctx):
@@ -441,11 +453,11 @@ async def fact(ctx):
     else:
         await ctx.followup.send('Unable to fetch facts :(')
 
-@tree.command(name='codex',description='Create codes.',guilds=client.guilds)
+@tree.command(name='chat-gpt',description='Chat with ChatGPT 3.5 Turbo',guilds=client.guilds)
 async def pro(interaction: discord.Interaction, message: str):
   await interaction.response.defer(ephemeral = False, thinking=True)
   karakter_sayisi = 0
-  response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": "You are a helpful assistant."},{"role": "user", "content": message}], temperature=1.0, max_tokens=3700)
+  response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": "You are a helpful assistant which Solø created. Users' names will be specified before their messages but you don't have to do that."},{"role": "user", "content": f"{interaction.user.name}: {message}"}], temperature=1.0, max_tokens=3700)
   for karakter in str(response["choices"][0]["message"]["content"]).strip():
     if karakter.isalpha():
       karakter_sayisi += 1
@@ -627,7 +639,7 @@ async def botinfo(ctx: discord.Interaction):
     kisiler = kisiler + len(k.members)
   solo= ctx.guild.me
 
-  embed = discord.Embed(title="SoloBot hakkında bazı bilgiler.", description=f"**Bot: \tSoloBot\n\nKaç adet sunucuya hizmet veriyor:\t{len(client.guilds)}\n\nKaç adet üyeye hizmet veriyor:\t{kisiler}\n\nOluşturulma tarihi:\t{client.user.created_at}\n\nSunucuya katılma tarihi:\t{solo.joined_at}**",colour= discord.Colour.blurple())
+  embed = discord.Embed(title="Information about SoloBot", description=f"**Bot: \tSoloBot\n\nHow many servers is it serving:\t{len(client.guilds)}\n\nHow many members is it serving:\t{kisiler}\n\nCreated at:\t<t:{client.user.created_at}>\n\nJoined at:\t<t:{solo.joined_at.timestamp()}>**",colour= discord.Colour.blurple())
   await ctx.response.send_message(embed=embed)
 
 @tree.command(name="userinfo",description="Information about a user.")
@@ -640,7 +652,7 @@ async def userinfo(ctx: discord.Interaction, kisi: discord.User):
       fart = lol.status
     else:
       fart = lol.activity.name
-    embed = discord.Embed(title="{} hakkında bazı bilgiler.".format(kisi.name), description=f"**Nickname: {kisi.name}\n\nBot mu?:\t{kisi.bot}\n\nDurumu:\t{fart}\n\nHesabın oluşturulma tarihi:\t{kisi.created_at}\n\nSunucuya katılma tarihi:\t{lol.joined_at}**",colour= discord.Colour.blurple())
+    embed = discord.Embed(title="Information about {}".format(kisi.name), description=f"**Nickname: {kisi.name}\n\nIs Bot?:\t{kisi.bot}\n\nStatus:\t{fart}\n\nCreated at:\t<t:{kisi.created_at.timestamp()}>\n\nJoined at:\t<t:{lol.joined_at.timestamp()}>**",colour= discord.Colour.blurple())
     embed.set_thumbnail(url=kisi.avatar.url)
     await ctx.response.send_message(embed=embed)
   except Exception as e:
@@ -675,7 +687,7 @@ async def snipe(ctx:discord.Interaction):
     else:
       mesaj = mesaj+i
   uye = await ctx.guild.fetch_member(int(a[-1]))
-  embed = discord.Embed(title="Son silinen mesaj", description=f"{mesaj}\n{a[-2]}",colour= discord.Colour.blurple())
+  embed = discord.Embed(title="Last deleted message", description=f"{mesaj}\n{a[-2]}",colour= discord.Colour.blurple())
   embed.set_author(name=uye.name+"#"+str(uye.discriminator),icon_url=uye.avatar.url)
   await ctx.response.send_message(embed=embed)
 
@@ -692,7 +704,7 @@ async def sniper(ctx: discord.Interaction):
     messaj = mesaj.split('\n')[0]
   uye = ctx.guild.get_member(int(a[-1]))
   embed = discord.Embed(title=" ", description=f" ",colour= discord.Colour.blurple())
-  embed.add_field(name=f'Son editlenen mesaj', value=f'~~{messaj}~~\n\n{a[-2]}', inline=False)
+  embed.add_field(name=f'Last edited message', value=f'~~{messaj}~~\n\n{a[-2]}', inline=False)
   embed.set_author(name=uye.name+"#"+str(uye.discriminator),icon_url=uye.avatar.url)
   await ctx.response.send_message(embed=embed)  
 
@@ -704,11 +716,11 @@ async def id(ctx: discord.Interaction,emoji: str):
     else:
       pass
 
-@tree.command(name="mesajyaz",description="Write a fake message like someone else.")
+@tree.command(name="fakemessage",description="Write a fake message like someone else.")
 @app_commands.describe(kişi="Specify a member.", mesaj="The message content.")
 async def mesajyaz(ctx:discord.Interaction, kişi: discord.Member, mesaj: str):
     try:
-        await ctx.response.send_message("Done!",ephemeral=True)
+        await ctx.response.send_message("Done.",ephemeral=True)
 
         webhook = await ctx.channel.create_webhook(name=kişi.name)
         await webhook.send(content=mesaj,
@@ -757,7 +769,7 @@ async def rb(ctx: discord.Interaction, kisi: str):
         embed.add_field(
             name='Information about {}'.format(kisi),
             value=
-            f'\nKullanıcı Adı: **{user.name}**\n\nGörüntülenen Ad: **{user.display_name}**\n\nHesabın açıklaması: **{user.description}**\n\nHesap banlı mı?: **{user.is_banned}**\n\nHesabın oluşturulma zamanı: **{user.created}**'
+            f'\nUsername: **{user.name}**\n\nNickname: **{user.display_name}**\n\nDescription: **{user.description}**\n\nIs Banned?: **{user.is_banned}**\n\nCreated at: **<t:{user.created.timestamp()}>**'
         )
         await ctx.response.send_message(embed=embed)
     except Exception as e:
@@ -767,10 +779,13 @@ async def rb(ctx: discord.Interaction, kisi: str):
 @tree.command(name="rfoto",description="Sends a random picture.")
 async def rfoto(ctx: discord.Interaction):
     a = random.randint(1, 1000)
-    embed = discord.Embed(title='Rastgele Foto!',
+    r = requests.get(f"https://api.unsplash.com/photos/random?client_id={os.environ['pic']}")
+    data = r.json()
+    photo_url = data['urls']['regular']
+    embed = discord.Embed(title='Random Picture!',
                           colour=discord.Colour.random())
-    embed.set_image(url=f'https://source.unsplash.com/random?={a}')
-    embed.set_footer(text=f'Bu komut {ctx.user.name} tarafından kullanıldı!')
+    embed.set_image(url=photo_url)
+    embed.set_footer(text=f'This command is used by {ctx.user.name}')
     await ctx.response.send_message(embed=embed)
 
 
@@ -991,17 +1006,17 @@ async def serverinfo(ctx: discord.Interaction):
     ü = len(ctx.guild.members)
     s = ctx.guild.owner.name
     vr = ctx.guild.verification_level
-    embed = discord.Embed(title='Sunucu Info', colour=discord.Colour.random())
+    embed = discord.Embed(title='Server Info', colour=discord.Colour.random())
     embed.add_field(
-        name=f'{ctx.guild.name} sunucusu hakkında bilgiler',
+        name=f'Information about {ctx.guild.name}',
         value=
-        f':white_small_square: Sunucu sahibi: {s} :white_small_square: \n \n :white_small_square: Sunucudaki üye sayısı {ü} :white_small_square: \n \n :white_small_square: Toplam kanal sayısı: {k} :white_small_square: \n \n :white_small_square: Toplam metin kanalı sayısı: {yk} :white_small_square: \n \n :white_small_square: Toplam ses kanalı sayısı: {sk} :white_small_square: \n \n :white_small_square: Sunucu doğrulaması: {vr} :white_small_square:'
+        f':white_small_square: Owner: {s} :white_small_square: \n \n :white_small_square: Number of the members: {ü} :white_small_square: \n \n :white_small_square: Number of channels: {k} :white_small_square: \n \n :white_small_square: Number of text channels: {yk} :white_small_square: \n \n :white_small_square: Number of voice channels: {sk} :white_small_square: \n \n :white_small_square: Verification: {vr} :white_small_square:'
     )
-    embed.set_footer(text=f'Bu komut {ctx.user.name} tarafından kullanıldı!')
+    embed.set_footer(text=f'This command is used by {ctx.user.name}')
     await ctx.response.send_message(embed=embed)
 
 
-@tree.command(name="mcbasarim",description="Minecraft achievement.")
+@tree.command(name="minecraft",description="Minecraft achievement.")
 async def mcbaşarım(ctx: discord.Interaction, msg: str):
     re=requests.get("https://minecraftskinstealer.com/achievement/1/Achievement+Get%21/"+msg)
     embed = discord.Embed(title='Minecraft Achievement',
@@ -1027,10 +1042,10 @@ async def instapp(ctx:discord.Interaction, kullaniciadi: str):
             else:
                 os.remove(i)
     except Exception as e:
-        await ctx.response.send_message(f'**Hata: {e}**')
+        await ctx.response.send_message(f'**Error: {e}**')
 
 
-@tree.command(name="sayıtahmin",description="Guess the number game.")
+@tree.command(name="guessthenumber",description="Guess the number game.")
 @commands.cooldown(1, 45, commands.BucketType.user)
 async def sayıtahmin(ctx: discord.Interaction):
     x = random.randint(1, 100)
@@ -1083,6 +1098,7 @@ async def yolla(ctx: discord.Interaction):
 
 @tree.command(name="ban",description="Ban a member.")
 @app_commands.describe(üye="Specify a member to ban", neden="Reason of ban.")
+@app_commands.rename(üye="member",neden="reason",mesajsil="deletemessages")
 @discord.app_commands.checks.has_permissions(ban_members=True)
 async def ban(ctx: discord.Interaction, üye: discord.Member, neden: str, mesajsil: int = 0):
     if üye.id == client.user.id:
@@ -1091,14 +1107,14 @@ async def ban(ctx: discord.Interaction, üye: discord.Member, neden: str, mesajs
         )
     elif üye.id == ctx.user.id:
         await ctx.response.send_message(
-            'Bak kardeşim... Son pişmanlık fayda etmez diyorum.. Emin misin?')
+            'Look... Bro... You are gonna ban yourself permanently.. Are you sure? (yes/no)')
         zort = await client.wait_for(
             'message',
             check=lambda msg: ctx.user.id == msg.author.id,
             timeout=50)
-        if zort.content.lower() == 'evet':
-            await üye.ban(reason='intihar... kendini banlattı..',delete_message_days=0)
-            await ctx.response.send_message('https://youtu.be/2agdQzh_zSk?t=72')
+        if zort.content.lower() == 'yes':
+            await üye.ban(reason='suicide... member self-banned..',delete_message_days=0)
+            await ctx.response.send_message('rip ' + ctx.user.name)
         else:
             return
     else:
@@ -1110,6 +1126,7 @@ async def ban(ctx: discord.Interaction, üye: discord.Member, neden: str, mesajs
 
 @tree.command(name="unban", description="Unban a member.")
 @app_commands.describe(üye="Member's nick and tag without any space.")
+@app_commands.rename(üye="member")
 @discord.app_commands.checks.has_permissions(ban_members=True)
 async def unban(ctx: discord.Interaction, üye: str):
     banlılar = [banli async for banli in ctx.guild.bans()]
@@ -1125,39 +1142,33 @@ async def unban(ctx: discord.Interaction, üye: str):
 
 @tree.command(name="kick",description="Kick a member.")
 @app_commands.describe(üye="Specify a member.",neden="Reason of kick.")
+@app_commands.rename(üye="member", neden="reason")
 @discord.app_commands.checks.has_permissions(kick_members=True)
 async def kick(ctx: discord.Interaction, üye: discord.Member, neden: str):
     if üye.id == client.user.id:
         await ctx.response.send_message(
-            'Tamam kanka şuan kendimi attım. Başkasını atmaya ne dersin?')
+            'OK. I banned myself now. Do you wanna ban others?')
     elif üye.id == ctx.user.id:
         await ctx.response.send_message(
-            'Bak kardeşim... Son pişmanlık fayda etmez diyorum.. Emin misin?')
+            'Look... Bro... You will ban urself permanently...')
         zort = await client.wait_for(
             'message',
             check=lambda msg: ctx.user.id == msg.author.id,
             timeout=50)
         if zort.content.lower() == 'evet':
-            await üye.kick(reason='intihar... kendini banlattı..')
+            await üye.kick(reason='suicide... member self-banned..')
             await ctx.response.send_message('https://youtu.be/2agdQzh_zSk?t=72')
         else:
             return
     else:
         await üye.kick(reason=neden)
         await ctx.response.send_message(
-            f'**{üye.name} adlı kullanıcı {neden} nedeniyle {ctx.user.name} tarafından atıldı**'
+            f'**{üye.name} is banned by {ctx.user.name}\nReason: {neden}**'
         )
 
 
-@tree.command()
-@discord.app_commands.checks.has_permissions(manage_nicknames=True)
-async def nick(ctx: discord.Interaction, member: discord.Member, nick: str):
-    await member.edit(nick=nick)
-    await ctx.response.send_message(
-        f"{member.mention} kullanıcısının sunucudaki ismi değiştirildi!")
-
-
 @tree.command(name="pfp",description="Sends a member's pfp")
+@app_commands.rename(arg="member")
 async def pfp(ctx: discord.Interaction, arg: discord.Member = None):
     if not arg == None:
         pfp = arg.avatar.url
@@ -1177,8 +1188,8 @@ async def pfp(ctx: discord.Interaction, arg: discord.Member = None):
 
 
 @tree.command(name="tts",description="Text to speech.")
-@app_commands.describe(text="Write a text.",language="Use 'en' for english, 'es' for spanish, 'ru' for russian, 'ja' for japanese etc. Don't use anything for Turkish.")
-async def tts(ctx: discord.Interaction,text: str, language: str = "tr"):
+@app_commands.describe(text="Write a text.",language="Use 'en' for english, 'es' for spanish, 'ru' for russian, 'ja' for japanese etc. Default is English.")
+async def tts(ctx: discord.Interaction,text: str, language: str = "en"):
     voice = get(client.voice_clients, guild=ctx.guild)
     try:
       if ctx.user.voice.channel:
@@ -1196,33 +1207,12 @@ async def tts(ctx: discord.Interaction,text: str, language: str = "tr"):
         x = random.randint(1, 100)
         tts = gtts.gTTS(f"{text}", lang=language)
         tts.save(f"adana{x}.mp3")
-        voice.play(FFmpegPCMAudio(f'adana{x}.mp3'))
+        voice.play(FFmpegOpusAudio(f'adana{x}.mp3'))
         voice.is_playing()
         sleep(1)
         os.remove(f'adana{x}.mp3')
 
-# bir linki oynatır
-async def dur(ctx: discord.Interaction):
-    voice = get(client.voice_clients, guild=ctx.guild)
 
-    if voice.is_playing():
-        voice.pause()
-        await ctx.response.send_message('**Şarkı durduruldu...**')
-
-
-async def devam(ctx: discord.Interaction):
-    voice = get(client.voice_clients, guild=ctx.guild)
-
-    if not voice.is_playing():
-        voice.resume()
-        await ctx.response.send_message('**Şarkı kaldığı yerden devam ediyor...**')
-
-
-async def kapat(ctx: discord.Interaction):
-    voice = get(client.voice_clients, guild=ctx.guild)
-    voice.stop()
-    voice = await ctx.voice_client.disconnect()
-    await ctx.response.send_message('**Kapatılıyor...**')
 
 
 @tree.command(name="skip",description="Skip the song.")
@@ -1234,13 +1224,13 @@ async def s(ctx: discord.Interaction):
         '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
         'options': '-vn'
     }
-    await ctx.response.send_message("Skipped!",ephemeral=True)
+    await ctx.response.send_message("Song skipped!",ephemeral=True)
     voice = get(client.voice_clients, guild=ctx.guild)
     voice.stop()
     with YoutubeDL(YDL_OPTIONS) as ydl:
         info = ydl.extract_info(song_queue[str(ctx.guild.id)][1], download=False)
     URL = info['url']
-    voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
+    voice.play(FFmpegOpusAudio(URL, **FFMPEG_OPTIONS))
     voice.is_playing()
     del song_queue[str(ctx.guild.id)][0]
 
@@ -1255,7 +1245,7 @@ async def nuke(ctx: discord.Interaction):
     a = await channel.clone()
     await channel.delete()
     await a.edit(position=channel_position, sync_permissions=True)
-    await a.send('**Kanal Başarıyla Tekrardan Oluşturuldu!**')
+    await a.send('**Channel recreated successfully!**')
     return
 
 
@@ -1273,136 +1263,137 @@ async def durum(ctx: discord.Interaction, durum: str):
 async def loop(ctx: discord.Interaction):
     if not loopunbabası.is_running():
         loopunbabası.start(ctx)
-        await ctx.response.send_message('**Loop başlatıldı!!**')
+        await ctx.response.send_message('**Loop started.**')
     else:
         loopunbabası.stop()
-        await ctx.response.send_message('**Loop kapatıldı!!**')
+        await ctx.response.send_message('**Loop stopped.**')
 
 
-@tree.command(name="oynat",description="Plays music.")
-async def oynat(ctx: discord.Interaction, search: str):
-    try:
-        try:
+@tree.command(name="play",description="Plays music.")
+async def play(ctx: discord.Interaction, search: str):
+  try:
+      try:
           if ctx.user.voice.channel:
-            pass
-        except:
-          await ctx.response.send_message("You are not connected to any voice channel.",ephemeral=True)
-          return
-        await ctx.response.send_message('**Video aranıyor...**')
-        query_string = urllib.parse.urlencode({'search_query': search})
-        htm_content = urllib.request.urlopen(
-            'http://www.youtube.com/results?' + query_string)
-        search_results = re.findall(r'/watch\?v=(.{11})',
-                                    htm_content.read().decode())
-        YDL_OPTIONS = {'format': 'bestaudio',
-    'noplaylist': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
-    'source_address': '0.0.0.0'}
-        FFMPEG_OPTIONS = {
-            'before_options':
-            '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-            'options': '-vn'
-        }
-        voice = get(client.voice_clients, guild=ctx.guild)
-        channel = ctx.user.voice.channel
-        if voice and voice.is_connected():
-            await voice.move_to(channel)
-        else:
-            voice = await channel.connect()
-
-        if not voice.is_playing():
-            try:
-                del song_queue[str(ctx.guild.id)][0]
-            except KeyError as e:
-              print(e)
-              song_queue[str(ctx.guild.id)] = []
-            except IndexError as e:
-              print(e)
               pass
-            finally:
-                song_queue[str(ctx.guild.id)] = song_queue[str(ctx.guild.id)] + [f'{search_results[0]}']
-            await ctx.edit_original_response(content='**Video bilgisi alınıyor...**')
-            with YoutubeDL(YDL_OPTIONS) as ydl:
-                info = ydl.extract_info(song_queue[str(ctx.guild.id)][0], download=False)
-            URL = info['url']
-            TITLE = info['title']
-            thumb = info['thumbnails'][0]
-            videofoto = thumb['url']
-            sure = info['duration']
-            kanal = info["uploader"]
-            videoizlen = info['view_count']
-            suremin = sure // 60
-            suresec = sure % 60
-            if suresec < 10:
-                suresec = f'0{suresec}'
-            if suremin < 10:
-                suremin = f'0{suremin}'
-            voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
-            voice.is_playing()
-            embed = discord.Embed(title='Şuanda oynatılan...',
-                                  description='',
-                                  colour=discord.Colour.default())
-            embed.set_footer(
-                text=f'İzlenme sayısı:{videoizlen}')
-            embed.set_thumbnail(url=videofoto)
-            embed.add_field(
-                name=kanal,
-                value=
-                f'```{TITLE}\n\n00:00 ------------------------- {suremin}:{suresec}```',
-                inline=False)
-            del song_queue[str(ctx.guild.id)][0]
-            await ctx.edit_original_response(content=None,embed=embed)
-            # eğer zaten oynatılıyordu
-        else:
-                song_queue[str(ctx.guild.id)] = song_queue[str(ctx.guild.id)] + [f'{search_results[0]}']
-                with YoutubeDL(YDL_OPTIONS) as ydl:
-                    info = ydl.extract_info(song_queue[str(ctx.guild.id)][-1], download=False)
-                TITLE = info['title']
-                embed = discord.Embed(title='Şarkı Sıraya Eklendi!',
-                                      description='',
-                                      colour=discord.Colour.default())
-                embed.set_footer(text='')  # istediğin bişey varsa yaz
-                embed.set_thumbnail(url='')  # istediğin bişey varsa yaz
-                embed.add_field(name='**Sıraya eklendi**',
-                                value=f'```Eklenen şarkı:{TITLE}```',
-                                inline=False)
-                await ctx.edit_original_response(content=None,embed=embed)
-                try:
-                    sıra.start(ctx, search)
-                    return
-                except:
-                    pass
-    except Exception as e:
-        print(e)
+      except:
+          await ctx.response.send_message("You are not connected to any voice channel.", ephemeral=True)
+          return
+  
+      await ctx.response.send_message('**Searching the video...**')
+      query_string = urllib.parse.urlencode({'search_query': search})
+      htm_content = urllib.request.urlopen('http://www.youtube.com/results?' + query_string)
+      search_results = re.findall(r'/watch\?v=(.{11})', htm_content.read().decode())
+  
+      YDL_OPTIONS = {
+          'format': 'bestaudio',
+          'noplaylist': True,
+          'nocheckcertificate': True,
+          'ignoreerrors': False,
+          'logtostderr': False,
+          'quiet': True,
+          'no_warnings': True,
+          'source_address': '0.0.0.0'
+      }
+      FFMPEG_OPTIONS = {
+          'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+          'options': '-vn'
+      }
+  
+      voice = get(client.voice_clients, guild=ctx.guild)
+      channel = ctx.user.voice.channel
+  
+      if voice and voice.is_connected():
+          await voice.move_to(channel)
+      else:
+          voice = await channel.connect()
+  
+      if not voice.is_playing():
+          if len(song_queue[str(ctx.guild.id)]) == 0:
+              song_queue[str(ctx.guild.id)] = [f'{search_results[0]}']
+          else:
+              del song_queue[str(ctx.guild.id)][0]
+  
+          await ctx.edit_original_response(content='**Fetching video information...**')
+          print(song_queue[str(ctx.guild.id)])
+  
+          with YoutubeDL(YDL_OPTIONS) as ydl:
+              info = ydl.extract_info(song_queue[str(ctx.guild.id)][0], download=False)
+          URL = info['url']
+          TITLE = info['title']
+          thumb = info['thumbnails'][0]
+          videofoto = thumb['url']
+          sure = info['duration']
+          kanal = info["uploader"]
+          videoizlen = info['view_count']
+          suremin = sure // 60
+          suresec = sure % 60
+  
+          if suresec < 10:
+              suresec = f'0{suresec}'
+          if suremin < 10:
+              suremin = f'0{suremin}'
+  
+          voice.play(FFmpegOpusAudio(URL, **FFMPEG_OPTIONS))
+          voice.is_playing()
+  
+          embed = discord.Embed(title='Now playing...', description='', colour=discord.Colour.default())
+          embed.set_footer(text=f'Views: {videoizlen}')
+          embed.set_thumbnail(url=videofoto)
+          embed.add_field(name=kanal, value=f'```{TITLE}\n\n00:00 ------------------------- {suremin}:{suresec}```', inline=False)
+          
+          if len(song_queue[str(ctx.guild.id)]) > 0:
+              del song_queue[str(ctx.guild.id)][0]
+  
+          await ctx.edit_original_response(content=None, embed=embed)
+      else:
+          if len(song_queue[str(ctx.guild.id)]) == 0:
+              song_queue[str(ctx.guild.id)] = [f'{search_results[0]}']
+          else:
+              song_queue[str(ctx.guild.id)].append(f'{search_results[0]}')
+  
+          with YoutubeDL(YDL_OPTIONS) as ydl:
+              info = ydl.extract_info(song_queue[str(ctx.guild.id)][-1], download=False)
+          TITLE = info['title']
+          thumb = info['thumbnails'][0]
+          videofoto = thumb['url']
+          embed = discord.Embed(title='Song added to the queue.', description='', colour=discord.Colour.default())
+          embed.set_footer(text='SoloBot by Solø#1000')  # İstediğiniz bir şey varsa yazabilirsiniz
+          embed.set_thumbnail(url=videofoto)  # İstediğiniz bir şey varsa URL'yi buraya yazabilirsiniz
+          embed.add_field(name='**Added the queue**', value=f'```Song: {TITLE}```', inline=False)
+          await ctx.edit_original_response(content=None, embed=embed)
+  
+          try:
+              sıra.start(ctx, search)
+          except:
+              pass
+  except Exception as e:
+      print(e)
+
 
 
 # durdurulmuş şarkıyı devam ettirme
 @tree.command()
-async def devam(ctx: discord.Interaction):
+async def resume(ctx: discord.Interaction):
     voice = get(client.voice_clients, guild=ctx.guild)
 
     if not voice.is_playing():
         voice.resume()
-        await ctx.response.send_message('**Şarkı kaldığı yerden devam ediyor...**')
+        await ctx.response.send_message('**Song continues from where it left off...**')
 
 
 # duraklatır bir süreliğine
 @tree.command()
-async def dur(ctx: discord.Interaction):
+async def pause(ctx: discord.Interaction):
     voice = get(client.voice_clients, guild=ctx.guild)
 
     if voice.is_playing():
         voice.pause()
-        await ctx.response.send_message('**Şarkı durduruldu...**')
+        await ctx.response.send_message('**Song paused...**')
 
 
 # durdurur
-@tree.command()
-async def kapat(ctx: discord.Interaction):
+@tree.command(description="Disconnects the bot from the voice channel")
+async def disconnect(ctx: discord.Interaction):
     voice = get(client.voice_clients, guild=ctx.guild)
 
     if voice.is_playing():
@@ -1413,20 +1404,20 @@ async def kapat(ctx: discord.Interaction):
       finally:
         voice.stop()
         voice = await client.voice_clients[0].disconnect()        
-        await ctx.response.send_message('**Kapatılıyor...**')
+        await ctx.response.send_message('**Leaving the voice chat...**')
     else:
         voice = await client.voice_client[0].disconnect()
 
 
 
 # mesaj silmece
-@tree.command(name="sil",description="Purge the messages.")
+@tree.command(name="purge",description="Purge the messages.")
 @app_commands.checks.cooldown(1, 30)
-@app_commands.describe(amount="Miktar.")
+@app_commands.describe(amount="Number of messages to be deleted")
 @discord.app_commands.checks.has_permissions(manage_messages=True)
-async def sil(ctx: discord.Interaction, amount: int = 15, reason: str = "Belirtilmemiş."):
+async def sil(ctx: discord.Interaction, amount: int = 15, reason: str = "No reason given."):
     await ctx.response.defer()
-    ney = await ctx.followup.send("**{} adet mesaj siliniyor...**".format(amount),ephemeral=False)
+    ney = await ctx.followup.send("**Deleting {} messages...**".format(amount),ephemeral=False)
     # mesaj silmece check
     def silcheck(mesaj):
       return mesaj != ney
@@ -1466,7 +1457,7 @@ async def spotify(ctx: discord.Interaction, search: str):
   embed.set_thumbnail(url=thumbnail)
   await ctx.response.send_message(embed=embed)
 
-@tree.command(name="queue",description="Learn the song queue.")
+@tree.command(name="queue",description="Get the song queue.")
 async def sr(ctx: discord.Interaction):
     queue = ''
     sira = 1
@@ -1493,7 +1484,7 @@ async def sr(ctx: discord.Interaction):
         await ctx.response.send_message(f'''```diff
 {queue}```''')
     else:
-        await ctx.response.send_message('Sırada hiç şarkı yok.')
+        await ctx.response.send_message('There are no songs in the queue.')
 
 
 @tasks.loop(seconds=1)
@@ -1530,14 +1521,14 @@ async def loopunbabası(ctx: discord.Interaction):
                     suresec = f'0{suresec}'
                 if suremin < 10:
                     suremin = f'0{suremin}'
-                voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
+                voice.play(FFmpegOpusAudio(URL, **FFMPEG_OPTIONS))
                 voice.is_playing()
                 embed = discord.Embed(title='Şuanda oynatılan...',
                                       description='',
                                       colour=discord.Colour.default())
                 embed.set_footer(
                     text=
-                    f'İzlenme sayısı:**{videoizlen}**\nLike sayısı:{videolike}'
+                    f'Views: {videoizlen}'
                 )
                 embed.set_thumbnail(url=videofoto)
 
@@ -1581,13 +1572,13 @@ async def loopunbabası(ctx: discord.Interaction):
                     suresec = f'0{suresec}'
                 if suremin < 10:
                     suremin = f'0{suremin}'
-                voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
+                voice.play(FFmpegOpusAudio(URL, **FFMPEG_OPTIONS))
                 voice.is_playing()
-                embed = discord.Embed(title='Şuanda oynatılan...',
+                embed = discord.Embed(title='Now playing...',
                                       description='',
                                       colour=discord.Colour.default())
                 embed.set_footer(
-                    text=f'İzlenme sayısı {videoizlen}\nLike sayısı:{videolike}'
+                    text=f'Views: {videoizlen}'
                 )
                 embed.set_thumbnail(url=videofoto)
 
@@ -1634,14 +1625,14 @@ async def sıra(ctx, search):
                         suresec = f'0{suresec}'
                     if suremin < 10:
                         suremin = f'0{suremin}'
-                    voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
+                    voice.play(FFmpegOpusAudio(URL, **FFMPEG_OPTIONS))
                     voice.is_playing()
-                    embed = discord.Embed(title='Şuanda oynatılan...',
+                    embed = discord.Embed(title='Now playing...',
                                           description='',
                                           colour=discord.Colour.default())
                     embed.set_footer(
                         text=
-                        f'İzlenme sayısı {videoizlen}'
+                        f'Views: {videoizlen}'
                     )
                     embed.set_thumbnail(url=videofoto)
                     embed.add_field(

@@ -207,3 +207,12 @@ None ----> None
 
 Vasiyet ----> 396
 - [https://open.spotify.com/track/168ZvVQDJd8xigT35ODXcl]
+
+None ----> None
+- [None]
+
+Aldattın Mı ----> 133
+- [https://open.spotify.com/track/7vEfL5rjwALu3A3AxYEvbQ]
+
+Gitme ----> 366
+- [https://open.spotify.com/track/4Sng3wnol2Gb2yXgFdr9lj]
